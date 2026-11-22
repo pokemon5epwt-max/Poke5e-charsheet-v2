@@ -1,0 +1,6 @@
+{
+  "name": "Remix Remix Pokémon 5e Character Sheet",
+  "description": "Owlbear Rodeo extension for managing Pokémon 5e Trainers and Pokémon parties, rolling checks and moves with automatic modifiers, and importing characters from poke5e.app.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

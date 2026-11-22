@@ -1,0 +1,16 @@
+{
+  "name": "Pokémon 5e Sheet",
+  "version": "1.0.0",
+  "manifest_version": 1,
+  "author": "Pokémon 5e Tools",
+  "description": "Pokémon 5e character sheet for Owlbear Rodeo with STAB/Proficiency rolls, hidden GM rolls, and poke5e.app import.",
+  "icon": "/assets/aistudio/Gemini_Generated_Image_97p0j297p0j297p0-removebg-preview_6d9b351f.png",
+  "background_url": "/background.html",
+  "action": {
+    "title": "Pokémon 5e Sheet",
+    "icon": "/assets/aistudio/Gemini_Generated_Image_97p0j297p0j297p0-removebg-preview_6d9b351f.png",
+    "popover": "/",
+    "height": 640,
+    "width": 540
+  }
+}

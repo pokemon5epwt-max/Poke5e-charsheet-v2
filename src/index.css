@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-display: 'Silkscreen', ui-monospace, monospace;
+    --font-sans: 'Pixelify Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'Silkscreen', ui-monospace, monospace;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #141a21;
+    color: #edf2f7;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+
+  .font-mono,
+  .tabular-nums {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* GBA PokéNav / PC Box tactical pixel-tile backdrop */
+.gba-canvas-bg {
+  background-color: #141a21;
+  background-image:
+    radial-gradient(ellipse 90% 45% at 50% -10%, rgba(230, 57, 70, 0.14), transparent 70%),
+    radial-gradient(ellipse 65% 40% at 95% 100%, rgba(56, 212, 106, 0.08), transparent 65%),
+    linear-gradient(to right, rgba(148, 163, 184, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(148, 163, 184, 0.05) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 16px 16px, 16px 16px;
+}
+
+/* Classic GBA RPG framed window panel (sharp pixel corners + 2px pixel bevel) */
+.gba-panel {
+  background-color: #1e2833;
+  border: 2px solid #090d12;
+  border-radius: 0;
+  box-shadow:
+    inset 2px 2px 0 #344557,
+    inset -2px -2px 0 #121820;
+}
+
+/* Inset GBA LCD screen / input well */
+.gba-well {
+  background-color: #10161d;
+  border: 2px solid #090d12;
+  border-radius: 0;
+  box-shadow:
+    inset 2px 2px 0 #090d12,
+    inset -1px -1px 0 #293645;
+}
+
+/* Tactile GBA pixel button */
+.gba-btn {
+  border: 2px solid #090d12;
+  border-radius: 0;
+  box-shadow:
+    inset 1px 1px 0 rgba(255, 255, 255, 0.22),
+    inset -2px -2px 0 rgba(0, 0, 0, 0.32);
+  transition: transform 75ms steps(2), background-color 120ms linear, border-color 120ms linear;
+}
+
+.gba-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow:
+    inset 2px 2px 0 rgba(0, 0, 0, 0.35),
+    inset -1px -1px 0 rgba(255, 255, 255, 0.12);
+}
+
+/* Crisp pixel-art SVG rendering */
+.pixel-art {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Pixelated dark scrollbar aligned with GBA PokéNav */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0d1218;
+  border-left: 1px solid #090d12;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334354;
+  border: 1px solid #090d12;
+  border-radius: 0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #465b71;
+}
