@@ -110,14 +110,14 @@ export function TopBar({
   };
 
   return (
-    <header className="h-11 sm:h-12 border-b-2 border-[#090D12] bg-[#9E1E2A] shadow-[inset_0_2px_0_#D84A57,inset_0_-2px_0_#6B111A] px-2.5 sm:px-4 lg:px-6 flex items-center justify-between gap-2 shrink-0 relative z-30">
+    <header className="h-12 border-b-2 border-[#090D12] bg-[#9E1E2A] shadow-[inset_0_2px_0_#D84A57,inset_0_-2px_0_#6B111A] px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-2 shrink-0 relative z-30">
       <div className="flex items-center gap-2 min-w-0">
         <PokedexLens className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
-        <span className="font-display text-xs sm:text-sm font-bold tracking-tight text-white drop-shadow-[1px_1px_0_#090D12] whitespace-nowrap shrink-0">
-          POKÉMON 5E
+        <span className="font-display text-sm sm:text-base font-bold tracking-tight text-white drop-shadow-[1px_1px_0_#090D12] whitespace-nowrap shrink-0">
+          Pokémon 5e
         </span>
         {obrState.isAvailable && (
-          <span className="hidden sm:inline text-xs text-rose-100/85 truncate max-w-[130px]">
+          <span className="hidden sm:inline text-xs font-medium text-rose-100/90 truncate max-w-[140px]">
             · {obrState.playerName}
           </span>
         )}
@@ -127,7 +127,7 @@ export function TopBar({
         <button
           type="button"
           onClick={onOpenImport}
-          className="gba-btn inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-medium text-slate-100 bg-[#1E2833] hover:bg-[#2A3746] whitespace-nowrap shrink-0 cursor-pointer"
+          className="gba-btn inline-flex items-center gap-1.5 px-2.5 sm:px-3 min-h-[36px] text-xs font-semibold text-slate-100 bg-[#1E2833] hover:bg-[#2A3746] whitespace-nowrap shrink-0 cursor-pointer"
         >
           <FileUp className="w-3.5 h-3.5 text-[#F6C445]" />
           <span>Import</span>
@@ -139,7 +139,7 @@ export function TopBar({
             disabled={isUpdatingSheet}
             onClick={() => void handleQuickUpdateSheet()}
             title={`Update sheet "${targetTrainerName}" dari poke5e.app`}
-            className="gba-btn inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-semibold text-white bg-[#267347] hover:bg-[#2E8A56] disabled:opacity-60 whitespace-nowrap shrink-0 cursor-pointer"
+            className="gba-btn inline-flex items-center gap-1.5 px-2.5 sm:px-3 min-h-[36px] text-xs font-semibold text-white bg-[#267347] hover:bg-[#2E8A56] disabled:opacity-60 whitespace-nowrap shrink-0 cursor-pointer"
           >
             {justUpdated ? (
               <Check className="w-3.5 h-3.5 text-[#F6C445]" />
@@ -159,7 +159,7 @@ export function TopBar({
           type="button"
           onClick={onExportJson}
           title="Export Party JSON"
-          className="gba-btn hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-100 bg-[#1E2833] hover:bg-[#2A3746] whitespace-nowrap shrink-0 cursor-pointer"
+          className="gba-btn hidden md:inline-flex items-center gap-1.5 px-3 min-h-[36px] text-xs font-semibold text-slate-100 bg-[#1E2833] hover:bg-[#2A3746] whitespace-nowrap shrink-0 cursor-pointer"
         >
           <Download className="w-3.5 h-3.5" />
           <span>Export</span>
@@ -169,7 +169,7 @@ export function TopBar({
           type="button"
           onClick={resetToStarterParty}
           title="Load sample Trainer & Pokémon party"
-          className="gba-btn hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-200 bg-[#1E2833] hover:bg-[#2A3746] whitespace-nowrap shrink-0 cursor-pointer"
+          className="gba-btn hidden md:inline-flex items-center gap-1.5 px-3 min-h-[36px] text-xs font-semibold text-slate-200 bg-[#1E2833] hover:bg-[#2A3746] whitespace-nowrap shrink-0 cursor-pointer"
         >
           <RotateCcw className="w-3.5 h-3.5" />
           <span>Sample</span>
@@ -180,26 +180,26 @@ export function TopBar({
             type="button"
             onClick={handleToggleObrSize}
             title={isExpandedObr ? 'Shrink to Medium Popover (540×640)' : 'Expand Popover'}
-            className="gba-btn hidden md:inline-flex items-center justify-center p-1.5 text-slate-100 bg-[#1E2833] hover:bg-[#2A3746] shrink-0 cursor-pointer"
+            className="gba-btn hidden md:inline-flex items-center justify-center w-9 h-9 text-slate-100 bg-[#1E2833] hover:bg-[#2A3746] shrink-0 cursor-pointer"
           >
             {isExpandedObr ? (
-              <Minimize2 className="w-3.5 h-3.5" />
+              <Minimize2 className="w-4 h-4" />
             ) : (
-              <Maximize2 className="w-3.5 h-3.5" />
+              <Maximize2 className="w-4 h-4" />
             )}
           </button>
         )}
 
-        {/* Log shortcut kept for tablet/OBR popover (sm..lg); on < sm History tab is right below */}
+        {/* Log shortcut for tablet/OBR popover (md..lg) */}
         <button
           type="button"
           onClick={onToggleMobileLog}
-          className="gba-btn hidden sm:inline-flex xl:hidden items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-[#090D12] bg-[#F6C445] hover:bg-[#FBD160] whitespace-nowrap shrink-0 cursor-pointer"
+          className="gba-btn hidden md:inline-flex xl:hidden items-center gap-1.5 px-3 min-h-[36px] text-xs font-semibold text-[#090D12] bg-[#F6C445] hover:bg-[#FBD160] whitespace-nowrap shrink-0 cursor-pointer"
         >
           <History className="w-3.5 h-3.5" />
           <span>Log</span>
           {unreadLogCount > 0 && (
-            <span className="font-mono text-[10px]">({unreadLogCount})</span>
+            <span className="font-mono text-xs font-bold">({unreadLogCount})</span>
           )}
         </button>
 
@@ -210,22 +210,22 @@ export function TopBar({
             onClick={() => setShowMobileMenu((prev) => !prev)}
             aria-expanded={showMobileMenu}
             aria-label="More actions"
-            className="gba-btn inline-flex items-center justify-center p-1.5 text-slate-100 bg-[#1E2833] hover:bg-[#2A3746] shrink-0 cursor-pointer"
+            className="gba-btn inline-flex items-center justify-center w-9 h-9 text-slate-100 bg-[#1E2833] hover:bg-[#2A3746] shrink-0 cursor-pointer"
           >
             <MoreHorizontal className="w-4 h-4" />
           </button>
 
           {showMobileMenu && (
-            <div className="gba-panel absolute right-0 top-full mt-1.5 w-44 p-1.5 space-y-1 z-50 shadow-xl">
+            <div className="gba-panel absolute right-0 top-full mt-1.5 w-48 p-1.5 space-y-1.5 z-50 shadow-xl">
               <button
                 type="button"
                 onClick={() => {
                   onExportJson();
                   setShowMobileMenu(false);
                 }}
-                className="gba-btn w-full flex items-center gap-2 px-2.5 py-2 text-xs font-medium text-slate-100 bg-[#141C24] hover:bg-[#24313F] cursor-pointer text-left"
+                className="gba-btn w-full flex items-center gap-2.5 px-3 min-h-[44px] text-xs font-semibold text-slate-100 bg-[#141C24] hover:bg-[#24313F] cursor-pointer text-left"
               >
-                <Download className="w-3.5 h-3.5 text-[#38BDF8] shrink-0" />
+                <Download className="w-4 h-4 text-[#38BDF8] shrink-0" />
                 <span>Export JSON</span>
               </button>
 
@@ -235,9 +235,9 @@ export function TopBar({
                   resetToStarterParty();
                   setShowMobileMenu(false);
                 }}
-                className="gba-btn w-full flex items-center gap-2 px-2.5 py-2 text-xs font-medium text-slate-100 bg-[#141C24] hover:bg-[#24313F] cursor-pointer text-left"
+                className="gba-btn w-full flex items-center gap-2.5 px-3 min-h-[44px] text-xs font-semibold text-slate-100 bg-[#141C24] hover:bg-[#24313F] cursor-pointer text-left"
               >
-                <RotateCcw className="w-3.5 h-3.5 text-[#F6C445] shrink-0" />
+                <RotateCcw className="w-4 h-4 text-[#F6C445] shrink-0" />
                 <span>Load Sample Party</span>
               </button>
 
@@ -248,12 +248,12 @@ export function TopBar({
                     handleToggleObrSize();
                     setShowMobileMenu(false);
                   }}
-                  className="gba-btn w-full flex items-center gap-2 px-2.5 py-2 text-xs font-medium text-slate-100 bg-[#141C24] hover:bg-[#24313F] cursor-pointer text-left"
+                  className="gba-btn w-full flex items-center gap-2.5 px-3 min-h-[44px] text-xs font-semibold text-slate-100 bg-[#141C24] hover:bg-[#24313F] cursor-pointer text-left"
                 >
                   {isExpandedObr ? (
-                    <Minimize2 className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                    <Minimize2 className="w-4 h-4 text-slate-300 shrink-0" />
                   ) : (
-                    <Maximize2 className="w-3.5 h-3.5 text-slate-300 shrink-0" />
+                    <Maximize2 className="w-4 h-4 text-slate-300 shrink-0" />
                   )}
                   <span>{isExpandedObr ? 'Shrink Popover' : 'Expand Popover'}</span>
                 </button>

@@ -1,5 +1,6 @@
 import {
   AbilityKey,
+  DamageModifierType,
   Move,
   PartyWorkspace,
   Poke5eFileEntry,
@@ -8,6 +9,7 @@ import {
   PokemonType,
   SkillName,
   SkillProficiencies,
+  StabBaseMode,
   TrainerItem,
   TrainerSheet,
 } from '../types/pokemon5e';
@@ -41,8 +43,17 @@ interface Poke5eMoveRef {
   pp?: number;
   range?: string;
   description?: string[];
+  attack?: {
+    scope?: string;
+  };
+  save?: {
+    attribute?: string[];
+    dc?: string | number;
+  };
   damage?: {
-    dice?: Record<string, string>;
+    dice?: Record<string, string | number>;
+    modifier?: string | number;
+    type?: string[] | string;
   };
 }
 
@@ -254,6 +265,33 @@ function parseSkills(raw: unknown) {
   return skills;
 }
 
+function normalizeStabBase(raw: unknown): StabBaseMode | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const val = raw.trim().toLowerCase();
+  if (
+    val === 'default' ||
+    val === 'proficiency' ||
+    val === 'movepower' ||
+    val === 'ruleset18' ||
+    val === 'none'
+  ) {
+    return val;
+  }
+  return undefined;
+}
+
+function mapDamageModifierType(raw: unknown): DamageModifierType {
+  if (raw === 0 || raw === '0') return 'none';
+  if (typeof raw !== 'string') return 'move';
+  const normalized = raw.trim().toUpperCase().replace(/\s+/g, ' ');
+  if (normalized === 'NONE' || normalized === '0') return 'none';
+  if (normalized === 'LEVEL') return 'level';
+  if (normalized === 'MOVE + 5' || normalized === 'MOVE+5') return 'move+5';
+  if (normalized === 'MOVE + 10' || normalized === 'MOVE+10') return 'move+10';
+  if (normalized === 'MOVE + STAB' || normalized === 'MOVE+STAB') return 'move+stab';
+  return 'move';
+}
+
 function parseMove(raw: Record<string, unknown>): Move {
   const ppRaw = raw.pp as Record<string, unknown> | number | undefined;
   let ppCurrent = 10;
@@ -273,6 +311,15 @@ function parseMove(raw: Record<string, unknown>): Move {
     ? raw.movePower[0]
     : raw.movePower ?? raw.power ?? raw.ability ?? 'str';
 
+  const movePower: AbilityKey | 'none' =
+    typeof powerRaw === 'string' && powerRaw.trim().toLowerCase() === 'none'
+      ? 'none'
+      : normalizeAbilityKey(powerRaw);
+
+  const availablePowers = Array.isArray(raw.availablePowers)
+    ? Array.from(new Set(raw.availablePowers.map(normalizeAbilityKey)))
+    : undefined;
+
   const damageDice = String(
     raw.damageDice ?? raw.damage ?? raw.dice ?? ''
   ).trim();
@@ -282,18 +329,29 @@ function parseMove(raw: Record<string, unknown>): Move {
       ? raw.isAttack
       : Boolean(damageDice) && !raw.saveAbility;
 
+  const damageModifierType: DamageModifierType =
+    typeof raw.damageModifierType === 'string'
+      ? mapDamageModifierType(raw.damageModifierType)
+      : 'move';
+
   return {
     id: String(raw.id || createId('mv')),
     name: String(raw.name || 'Unnamed Move'),
     type: normalizePokemonType(raw.type),
     ppCurrent: Number.isFinite(ppCurrent) ? ppCurrent : 10,
     ppMax: Number.isFinite(ppMax) ? ppMax : 10,
-    movePower: normalizeAbilityKey(powerRaw),
+    movePower,
+    ...(availablePowers && availablePowers.length > 0 ? { availablePowers } : {}),
     damageDice,
+    damageModifierType,
     isAttack,
     saveAbility: raw.saveAbility ? normalizeAbilityKey(raw.saveAbility) : undefined,
     stabEligible:
       typeof raw.stabEligible === 'boolean' ? raw.stabEligible : Boolean(damageDice),
+    ...(raw.isHealing ? { isHealing: true } : {}),
+    ...(typeof raw.toHitModifier === 'number' ? { toHitModifier: raw.toHitModifier } : {}),
+    ...(typeof raw.damageModifier === 'number' ? { damageModifier: raw.damageModifier } : {}),
+    ...(typeof raw.saveDcModifier === 'number' ? { saveDcModifier: raw.saveDcModifier } : {}),
     range: String(raw.range || 'Melee (5 ft)'),
     castingTime: String(raw.castingTime || raw.time || '1 Action'),
     description: String(raw.description || raw.effect || ''),
@@ -333,6 +391,12 @@ function parsePokemon(raw: Record<string, unknown>): PokemonSheet {
     ac: Number(raw.ac ?? raw.armorClass ?? 12),
     speed: Number(raw.speed ?? 30),
     hitDice: String(raw.hitDice || `${Math.max(1, Number(raw.level ?? 1))}d8`),
+    ...(normalizeStabBase(raw.stabBase) ? { stabBase: normalizeStabBase(raw.stabBase) } : {}),
+    ...(typeof raw.stabBonus === 'number' ? { stabBonus: raw.stabBonus } : {}),
+    ...(typeof raw.stabOverride === 'number' ? { stabOverride: raw.stabOverride } : {}),
+    ...(typeof raw.proficiencyOverride === 'number'
+      ? { proficiencyOverride: raw.proficiencyOverride }
+      : {}),
     abilities: parseAttributes(rawAbilities),
     savingThrows: parseSaves(raw.savingThrows ?? raw.saves),
     skills: parseSkills(raw.skills ?? raw.proficientSkills),
@@ -510,6 +574,9 @@ interface SupabaseMoveRow {
   custom_time?: string | null;
   custom_range_type?: string | null;
   custom_range_value?: number | null;
+  to_hit_modifier?: number | null;
+  damage_modifier?: number | null;
+  save_dc_modifier?: number | null;
 }
 
 interface SupabaseHeldItemRow {
@@ -570,15 +637,67 @@ function pickScaledDamageDice(
       .filter((n) => !Number.isNaN(n) && n <= pokemonLevel)
       .sort((a, b) => b - a);
     if (thresholds.length > 0) {
-      return refMove.damage.dice[String(thresholds[0])];
+      return String(refMove.damage.dice[String(thresholds[0])]);
     }
     const firstKey = Object.keys(refMove.damage.dice)[0];
-    if (firstKey) return refMove.damage.dice[firstKey];
+    if (firstKey) return String(refMove.damage.dice[firstKey]);
   }
 
-  const desc = refMove?.description?.join(' ') ?? '';
-  const diceMatch = desc.match(/\b(\d+d\d+)\b/i);
-  return diceMatch ? diceMatch[1] : '';
+  // If the move exists in official moves.json and defines no damage dice, don't
+  // misread duration/effect dice in description text (e.g. "1d4 rounds") as move damage.
+  if (refMove) {
+    return '';
+  }
+
+  return '';
+}
+
+function resolveMovePower(
+  customPowers: string[] | null | undefined,
+  refPower: string[] | string | undefined,
+  pokemonAbilities: Record<AbilityKey, number>
+): { movePower: AbilityKey | 'none'; availablePowers: AbilityKey[] } {
+  const source =
+    Array.isArray(customPowers) && customPowers.length > 0
+      ? customPowers
+      : refPower;
+
+  if (!source) {
+    return { movePower: 'str', availablePowers: ['str'] };
+  }
+
+  const tokens = Array.isArray(source) ? source : [source];
+  const lowerTokens = tokens.map((t) => String(t).trim().toLowerCase());
+
+  if (lowerTokens.length === 1 && lowerTokens[0] === 'none') {
+    return { movePower: 'none', availablePowers: [] };
+  }
+
+  let availablePowers: AbilityKey[];
+  if (lowerTokens.some((t) => t === 'any' || t === 'varies')) {
+    availablePowers = [...ABILITY_KEYS];
+  } else {
+    availablePowers = Array.from(
+      new Set(
+        lowerTokens
+          .filter((t) => t !== 'none')
+          .map(normalizeAbilityKey)
+      )
+    );
+  }
+
+  if (availablePowers.length === 0) {
+    return { movePower: 'none', availablePowers: [] };
+  }
+
+  // Pick whichever allowed Move Power ability is highest on this Pokémon
+  const bestPower = availablePowers.reduce(
+    (best, curr) =>
+      pokemonAbilities[curr] > pokemonAbilities[best] ? curr : best,
+    availablePowers[0]
+  );
+
+  return { movePower: bestPower, availablePowers };
 }
 
 function mapSupabaseMove(
@@ -590,27 +709,45 @@ function mapSupabaseMove(
   const ref = movesById.get(String(row.move_id).toLowerCase());
   const desc = ref?.description?.join(' ') ?? row.notes ?? '';
 
-  const powerOptionsRaw = Array.isArray(row.custom_powers) && row.custom_powers.length > 0
-    ? row.custom_powers
-    : Array.isArray(ref?.power)
-      ? ref.power
-      : ref?.power
-        ? [ref.power]
-        : ['str'];
+  const { movePower, availablePowers } = resolveMovePower(
+    row.custom_powers,
+    ref?.power,
+    pokemonAbilities
+  );
 
-  const powerKeys = powerOptionsRaw.map(normalizeAbilityKey);
-  // Pick whichever allowed Move Power ability is highest on this Pokémon
-  const bestPower = powerKeys.reduce((best, curr) =>
-    pokemonAbilities[curr] > pokemonAbilities[best] ? curr : best
-  , powerKeys[0] ?? 'str');
+  let damageDice = pickScaledDamageDice(ref, pokemonLevel);
+  if (!ref && desc) {
+    const diceMatch = desc.match(/\b(\d+d\d+)\b/i);
+    damageDice = diceMatch ? diceMatch[1] : '';
+  }
 
-  const damageDice = pickScaledDamageDice(ref, pokemonLevel);
-  const saveMatch = desc.match(/\b(STR|DEX|CON|INT|WIS|CHA)\s+saving\s+throw/i);
-  const isAttack =
-    !saveMatch &&
-    (/\b(?:melee|ranged)\s+attack\b/i.test(desc) ||
-      /\bmake\s+an\s+attack\b/i.test(desc) ||
-      Boolean(damageDice));
+  const fallbackSaveMatch = desc.match(
+    /\b(STR|DEX|CON|INT|WIS|CHA)\s+(?:saving\s+throw|save)\b/i
+  );
+
+  const saveAbility: AbilityKey | undefined = ref
+    ? ref.save?.attribute?.[0]
+      ? normalizeAbilityKey(ref.save.attribute[0])
+      : undefined
+    : fallbackSaveMatch
+      ? normalizeAbilityKey(fallbackSaveMatch[1])
+      : undefined;
+
+  const isAttack = ref
+    ? Boolean(ref.attack)
+    : /\b(?:melee|ranged)\s+attack\b|\bmake\s+an\s+attack\b/i.test(desc) ||
+      (!fallbackSaveMatch && Boolean(damageDice));
+
+  const damageModifierType: DamageModifierType = ref?.damage
+    ? mapDamageModifierType(ref.damage.modifier)
+    : 'move';
+
+  const isHealing = ref?.damage?.type === 'healing';
+  const rawTypeToken = String(row.custom_type ?? ref?.type ?? 'Normal')
+    .trim()
+    .toLowerCase();
+  const isTypeless =
+    rawTypeToken === 'typeless' || ref?.damage?.type === 'typeless';
 
   const customRange =
     row.custom_range_type === 'ranged' && row.custom_range_value
@@ -627,11 +764,26 @@ function mapSupabaseMove(
     type: normalizePokemonType(row.custom_type ?? ref?.type ?? 'Normal'),
     ppCurrent: Number(row.pp_cur ?? ref?.pp ?? 15),
     ppMax: Number(row.pp_max ?? ref?.pp ?? 15),
-    movePower: bestPower,
+    movePower,
+    ...(availablePowers.length > 0 ? { availablePowers } : {}),
     damageDice,
+    damageModifierType,
     isAttack,
-    saveAbility: saveMatch ? normalizeAbilityKey(saveMatch[1]) : undefined,
-    stabEligible: Boolean(damageDice),
+    saveAbility,
+    stabEligible:
+      Boolean(damageDice) &&
+      !isHealing &&
+      (!isTypeless || damageModifierType === 'move+stab'),
+    ...(isHealing ? { isHealing: true } : {}),
+    ...(typeof row.to_hit_modifier === 'number' && row.to_hit_modifier !== 0
+      ? { toHitModifier: row.to_hit_modifier }
+      : {}),
+    ...(typeof row.damage_modifier === 'number' && row.damage_modifier !== 0
+      ? { damageModifier: row.damage_modifier }
+      : {}),
+    ...(typeof row.save_dc_modifier === 'number' && row.save_dc_modifier !== 0
+      ? { saveDcModifier: row.save_dc_modifier }
+      : {}),
     range: customRange,
     castingTime: row.custom_time || ref?.time || '1 Action',
     description: desc,
@@ -855,6 +1007,12 @@ export async function importFromPoke5eLink(
             ? spRef.type.map(normalizePokemonType).slice(0, 2)
             : (['Normal'] as PokemonType[]);
 
+      const mappedStabBase = normalizeStabBase(row.stab_base);
+      const mappedStabBonus =
+        typeof row.stab_bonus === 'number' && row.stab_bonus !== 0
+          ? row.stab_bonus
+          : undefined;
+
       return {
         id: `poke5e-${row.id}`,
         kind: 'pokemon',
@@ -874,6 +1032,8 @@ export async function importFromPoke5eLink(
         ac: Number(row.ac ?? 12),
         speed: Number(row.speed_walking ?? 30),
         hitDice: `${Math.max(1, Number(row.level ?? 1))}${row.hit_dice_size || 'd8'}`,
+        ...(mappedStabBase ? { stabBase: mappedStabBase } : {}),
+        ...(mappedStabBonus !== undefined ? { stabBonus: mappedStabBonus } : {}),
         abilities,
         savingThrows: {
           str: Boolean(row.save_str),

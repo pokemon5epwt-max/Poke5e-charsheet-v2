@@ -277,22 +277,22 @@ export function ImportPoke5eModal({ onClose }: ImportPoke5eModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-2.5 sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="import-modal-title"
     >
-      <div className="gba-panel w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="gba-panel w-full max-w-2xl overflow-hidden flex flex-col max-h-[92dvh]">
         {/* Header */}
-        <div className="px-5 py-3.5 bg-[#9E1E2A] border-b-2 border-[#090D12] flex items-center justify-between">
-          <div>
+        <div className="px-4 sm:px-5 py-3.5 bg-[#9E1E2A] border-b-2 border-[#090D12] flex items-center justify-between gap-2">
+          <div className="min-w-0">
             <h2
               id="import-modal-title"
-              className="font-display text-sm font-bold text-white uppercase"
+              className="font-display text-sm sm:text-base font-bold text-white uppercase tracking-tight"
             >
               Import &amp; Update Sheet (poke5e.app)
             </h2>
-            <p className="text-xs text-rose-100/85 mt-0.5">
+            <p className="text-xs text-rose-100/90 mt-0.5 leading-snug">
               History Trainer tersimpan, Link poke5e, file .poke5e, JSON, atau statblock
             </p>
           </div>
@@ -300,7 +300,7 @@ export function ImportPoke5eModal({ onClose }: ImportPoke5eModalProps) {
             type="button"
             onClick={onClose}
             aria-label="Close Import Modal"
-            className="gba-btn p-1.5 bg-[#1E2833] hover:bg-[#2A3746] text-slate-200 cursor-pointer"
+            className="gba-btn w-9 h-9 inline-flex items-center justify-center bg-[#1E2833] hover:bg-[#2A3746] text-slate-200 cursor-pointer shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -308,7 +308,7 @@ export function ImportPoke5eModal({ onClose }: ImportPoke5eModalProps) {
 
         {/* Linked Trainer Quick Update Banner */}
         {linkedKey ? (
-          <div className="px-5 py-3 bg-[#152822] border-b-2 border-[#090D12] flex flex-wrap items-center justify-between gap-2.5 text-xs">
+          <div className="px-4 sm:px-5 py-3 bg-[#152822] border-b-2 border-[#090D12] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs">
             <div className="min-w-0">
               <div className="font-semibold text-[#38D46A]">
                 Aktif Terhubung · {party.trainer.name} (Lv.{party.trainer.level})
@@ -329,7 +329,7 @@ export function ImportPoke5eModal({ onClose }: ImportPoke5eModalProps) {
               type="button"
               disabled={isLoading}
               onClick={() => void runLinkFetch(linkedFullUrl || linkedKey, 'update')}
-              className="gba-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-white bg-[#267347] hover:bg-[#2E8A56] disabled:opacity-50 cursor-pointer shrink-0"
+              className="gba-btn inline-flex items-center justify-center gap-1.5 px-3 min-h-[38px] text-xs font-bold text-white bg-[#267347] hover:bg-[#2E8A56] disabled:opacity-50 cursor-pointer shrink-0"
             >
               <RefreshCw
                 className={`w-3.5 h-3.5 ${
@@ -342,7 +342,7 @@ export function ImportPoke5eModal({ onClose }: ImportPoke5eModalProps) {
             </button>
           </div>
         ) : (
-          <div className="px-5 py-3 bg-[#131A22] border-b-2 border-[#090D12] flex items-start gap-2.5 text-xs text-slate-200">
+          <div className="px-4 sm:px-5 py-3 bg-[#131A22] border-b-2 border-[#090D12] flex items-start gap-2.5 text-xs text-slate-200">
             <Info className="w-4 h-4 text-[#38BDF8] shrink-0 mt-0.5" />
             <p className="leading-relaxed">
               Setiap Trainer yang diimpor otomatis tersimpan di{' '}
@@ -353,7 +353,7 @@ export function ImportPoke5eModal({ onClose }: ImportPoke5eModalProps) {
         )}
 
         {/* Tabs */}
-        <div className="px-5 py-2 bg-[#17202A] border-b-2 border-[#090D12] flex items-center gap-1.5 overflow-x-auto">
+        <div className="px-4 sm:px-5 py-2 bg-[#17202A] border-b-2 border-[#090D12] flex items-center gap-1.5 overflow-x-auto">
           {(
             [
               {
@@ -373,7 +373,7 @@ export function ImportPoke5eModal({ onClose }: ImportPoke5eModalProps) {
                 setTab(t.id);
                 setStatus(null);
               }}
-              className={`gba-btn px-3 py-1.5 text-xs font-semibold cursor-pointer whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 ${
+              className={`gba-btn px-3 min-h-[36px] text-xs font-semibold cursor-pointer whitespace-nowrap shrink-0 inline-flex items-center gap-1.5 ${
                 tab === t.id
                   ? 'bg-[#D62839] text-white'
                   : 'bg-[#131A22] text-slate-300 hover:text-white'
@@ -386,7 +386,7 @@ export function ImportPoke5eModal({ onClose }: ImportPoke5eModalProps) {
         </div>
 
         {/* Body */}
-        <div className="p-5 overflow-y-auto space-y-4">
+        <div className="p-4 sm:p-5 overflow-y-auto space-y-4">
           {tab === 'history' && (
             <div className="space-y-3">
               {importHistory.length === 0 ? (
@@ -439,7 +439,7 @@ export function ImportPoke5eModal({ onClose }: ImportPoke5eModalProps) {
                     return (
                       <div
                         key={profile.id}
-                        className={`p-3 border-2 border-[#090D12] flex flex-wrap items-center justify-between gap-3 ${
+                        className={`p-3 border-2 border-[#090D12] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 ${
                           isCurrentlyLoaded
                             ? 'bg-[#21332C] shadow-[inset_2px_2px_0_#38D46A,inset_-2px_-2px_0_#101A16]'
                             : 'gba-well'
@@ -447,18 +447,18 @@ export function ImportPoke5eModal({ onClose }: ImportPoke5eModalProps) {
                       >
                         <div className="min-w-0 flex-1 space-y-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-display text-xs font-bold text-white">
+                            <span className="font-display text-sm font-bold text-white">
                               {profile.trainerName}
                             </span>
-                            <span className="font-mono text-[10px] text-[#F6C445]">
+                            <span className="font-mono text-xs text-[#F6C445]">
                               Lv.{profile.trainerLevel}
                             </span>
                             {isCurrentlyLoaded && (
-                              <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 bg-[#38D46A] text-[#090D12]">
+                              <span className="font-mono text-[11px] font-bold px-1.5 py-0.5 bg-[#38D46A] text-[#090D12]">
                                 AKTIF
                               </span>
                             )}
-                            <span className="font-mono text-[10px] px-1.5 py-0.5 bg-[#1A232E] border border-[#090D12] text-slate-300 uppercase">
+                            <span className="font-mono text-[11px] px-1.5 py-0.5 bg-[#1A232E] border border-[#090D12] text-slate-300 uppercase">
                               {profile.source}
                             </span>
                           </div>
@@ -468,7 +468,7 @@ export function ImportPoke5eModal({ onClose }: ImportPoke5eModalProps) {
                             {profile.pokemonSummary ? ` (${profile.pokemonSummary})` : ''}
                           </div>
 
-                          <div className="font-mono text-[10px] text-slate-400 truncate">
+                          <div className="font-mono text-[11px] text-slate-400 truncate">
                             {hasRemoteLink
                               ? `ID: ${profile.readKey || profile.trainerId} · `
                               : ''}
@@ -476,13 +476,13 @@ export function ImportPoke5eModal({ onClose }: ImportPoke5eModalProps) {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#090D12]/80">
                           <button
                             type="button"
                             onClick={() => handleLoadSavedProfile(profile)}
                             disabled={isLoading}
                             title="Muat sheet tersimpan ini secara instan"
-                            className="gba-btn inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-slate-100 bg-[#263547] hover:bg-[#32445A] disabled:opacity-50 cursor-pointer"
+                            className="gba-btn flex-1 sm:flex-initial inline-flex items-center justify-center gap-1 px-3 min-h-[38px] text-xs font-semibold text-slate-100 bg-[#263547] hover:bg-[#32445A] disabled:opacity-50 cursor-pointer"
                           >
                             <FolderOpen className="w-3.5 h-3.5 text-[#F6C445]" />
                             <span>Load</span>
@@ -494,7 +494,7 @@ export function ImportPoke5eModal({ onClose }: ImportPoke5eModalProps) {
                               onClick={() => void handleUpdateSavedProfile(profile)}
                               disabled={isLoading}
                               title="Tarik data terbaru Trainer ini dari poke5e.app"
-                              className="gba-btn inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-white bg-[#267347] hover:bg-[#2E8A56] disabled:opacity-50 cursor-pointer"
+                              className="gba-btn flex-1 sm:flex-initial inline-flex items-center justify-center gap-1 px-3 min-h-[38px] text-xs font-semibold text-white bg-[#267347] hover:bg-[#2E8A56] disabled:opacity-50 cursor-pointer"
                             >
                               <RefreshCw
                                 className={`w-3.5 h-3.5 ${
@@ -511,9 +511,9 @@ export function ImportPoke5eModal({ onClose }: ImportPoke5eModalProps) {
                             disabled={isLoading}
                             title="Hapus dari history tersimpan"
                             aria-label={`Remove ${profile.trainerName} from saved history`}
-                            className="gba-btn p-1.5 bg-[#131A22] hover:bg-[#4A1922] text-slate-400 hover:text-rose-300 cursor-pointer"
+                            className="gba-btn w-9 h-9 inline-flex items-center justify-center bg-[#131A22] hover:bg-[#4A1922] text-slate-400 hover:text-rose-300 cursor-pointer shrink-0"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </div>

@@ -48,22 +48,47 @@ export type SavingThrowProficiencies = Record<AbilityKey, boolean>;
 
 export type SkillProficiencies = Record<SkillName, SkillProficiencyLevel>;
 
+export type DamageModifierType =
+  | 'move'
+  | 'none'
+  | 'level'
+  | 'move+5'
+  | 'move+10'
+  | 'move+stab';
+
+export type StabBaseMode =
+  | 'default'
+  | 'proficiency'
+  | 'movepower'
+  | 'ruleset18'
+  | 'none';
+
 export interface Move {
   id: string;
   name: string;
   type: PokemonType;
   ppCurrent: number;
   ppMax: number;
-  /** Primary ability used for Attack Roll and Damage Modifier (Move Power) */
-  movePower: AbilityKey;
-  /** Dice expression such as "1d8", "2d6", "1d10", or "" for non-damaging moves */
+  /** Primary ability used for Attack Roll / Save DC / Damage Modifier (or 'none' for moves without a Move Power) */
+  movePower: AbilityKey | 'none';
+  /** Optional list of allowed Move Power abilities from poke5e.app (e.g. ['str', 'dex']) */
+  availablePowers?: AbilityKey[];
+  /** Dice expression such as "1d8", "2d6", "16", or "" for non-damaging moves */
   damageDice: string;
-  /** Whether the move makes an attack roll (d20 + Move Power mod + Proficiency) */
+  /** How damage modifier is calculated per poke5e.app rules (defaults to 'move') */
+  damageModifierType?: DamageModifierType;
+  /** Whether the move makes an attack roll (d20 + Move Power mod + Proficiency + toHitModifier) */
   isAttack: boolean;
-  /** Optional Save DC ability if the move forces a saving throw instead of attack roll */
+  /** Optional Save DC ability if the move forces a saving throw (can coexist with isAttack) */
   saveAbility?: AbilityKey;
   /** Whether STAB bonus applies to damage when move type matches Pokémon type */
   stabEligible: boolean;
+  /** True for healing moves (which never receive STAB) */
+  isHealing?: boolean;
+  /** Optional per-move custom modifiers (from poke5e.app or manual tweaks) */
+  toHitModifier?: number;
+  damageModifier?: number;
+  saveDcModifier?: number;
   range: string;
   castingTime: string;
   description: string;
@@ -86,7 +111,11 @@ export interface PokemonSheet {
   ac: number;
   speed: number;
   hitDice: string;
-  /** Optional custom STAB override; if undefined, computed from Pokémon 5e level table */
+  /** poke5e.app STAB rule base ('default'/'proficiency' = 2024 ruleset = Proficiency Bonus) */
+  stabBase?: StabBaseMode;
+  /** Extra STAB bonus (e.g. +1 / +2 from Adaptability or features) */
+  stabBonus?: number;
+  /** Optional custom STAB override; if undefined, computed from stabBase + stabBonus */
   stabOverride?: number;
   /** Optional custom Proficiency override; if undefined, computed from 5e level table */
   proficiencyOverride?: number;

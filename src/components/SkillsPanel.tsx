@@ -38,8 +38,16 @@ export function SkillsPanel({
   onRollSkill,
 }: SkillsPanelProps) {
   const [query, setQuery] = useState('');
+  const [onlyProficient, setOnlyProficient] = useState(false);
+
+  const proficientCount = ALL_SKILLS.filter(
+    (skill) => (skills[skill] ?? 'none') !== 'none'
+  ).length;
 
   const filtered = ALL_SKILLS.filter((skill) => {
+    if (onlyProficient && (skills[skill] ?? 'none') === 'none') {
+      return false;
+    }
     if (!query.trim()) return true;
     const q = query.toLowerCase();
     const ab = ABILITY_LABELS[SKILL_ABILITY_MAP[skill]].short.toLowerCase();
@@ -50,84 +58,121 @@ export function SkillsPanel({
     <section className="gba-panel p-3.5 sm:p-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
         <div>
-          <h3 className="font-display text-xs font-bold text-slate-200 uppercase">
+          <h3 className="font-display text-sm font-bold text-slate-100 uppercase tracking-wide">
             Skills
           </h3>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-slate-300 mt-0.5">
             {isEditing
-              ? 'Tap Prof/Exp square to cycle proficiency'
+              ? 'Tap Prof/Exp badge to cycle proficiency'
               : 'Tap any skill row to roll check'}
           </p>
         </div>
 
-        <div className="relative w-full sm:w-44">
-          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter skills..."
-            aria-label="Filter skills"
-            className="gba-well pl-8 pr-3 py-2 sm:py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none w-full"
-          />
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
+          <div className="gba-well inline-flex items-center p-0.5 shrink-0">
+            <button
+              type="button"
+              onClick={() => setOnlyProficient(false)}
+              className={`px-2.5 py-1.5 sm:py-1 text-xs font-semibold cursor-pointer rounded-xs ${
+                !onlyProficient
+                  ? 'bg-[#283747] text-white'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              All ({ALL_SKILLS.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setOnlyProficient(true)}
+              className={`px-2.5 py-1.5 sm:py-1 text-xs font-semibold cursor-pointer rounded-xs ${
+                onlyProficient
+                  ? 'bg-[#267347] text-white'
+                  : 'text-slate-400 hover:text-slate-200'
+              }`}
+            >
+              Prof ({proficientCount})
+            </button>
+          </div>
+
+          <div className="relative flex-1 sm:w-44">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Filter skills..."
+              aria-label="Filter skills"
+              className="gba-well pl-8 pr-3 py-2 sm:py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none w-full"
+            />
+          </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-1.5">
-        {filtered.map((skill) => {
-          const abilityKey = SKILL_ABILITY_MAP[skill];
-          const profState = skills[skill] ?? 'none';
-          const mod = getSkillModifier(abilities, skills, skill, profBonus);
+      {filtered.length === 0 ? (
+        <div className="gba-well p-4 text-center text-xs text-slate-300">
+          {onlyProficient && proficientCount === 0
+            ? 'No proficient skills marked yet. Tap Edit Sheet to toggle Prof/Exp.'
+            : 'No skills match your filter.'}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {filtered.map((skill) => {
+            const abilityKey = SKILL_ABILITY_MAP[skill];
+            const profState = skills[skill] ?? 'none';
+            const mod = getSkillModifier(abilities, skills, skill, profBonus);
 
-          return (
-            <div
-              key={skill}
-              className="gba-well flex items-center justify-between gap-2 px-2.5 py-2.5 sm:py-2 hover:bg-[#1A232E] transition-colors"
-            >
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <button
-                  type="button"
-                  onClick={() => (isEditing ? onCycleSkillProf(skill) : onRollSkill(skill))}
-                  title={
-                    isEditing
-                      ? 'Cycle None / Proficient / Expertise'
-                      : `Roll ${skill}`
-                  }
-                  className={`px-1.5 py-1 sm:py-0.5 font-mono text-[9px] font-bold border border-[#090D12] shrink-0 cursor-pointer ${
-                    profState === 'expertise'
-                      ? 'bg-[#F6C445] text-[#090D12]'
-                      : profState === 'proficient'
-                        ? 'bg-[#267347] text-white'
-                        : 'bg-[#18212B] text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  {PROF_LABEL[profState]}
-                </button>
+            return (
+              <div
+                key={skill}
+                className="gba-well flex items-center justify-between gap-2 px-2.5 py-2 min-h-[44px] hover:bg-[#1A232E] transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      isEditing ? onCycleSkillProf(skill) : onRollSkill(skill)
+                    }
+                    title={
+                      isEditing
+                        ? 'Cycle None / Proficient / Expertise'
+                        : `Roll ${skill}`
+                    }
+                    className={`min-w-[40px] px-1.5 py-1 font-mono text-[11px] font-bold border border-[#090D12] rounded-xs shrink-0 cursor-pointer text-center ${
+                      profState === 'expertise'
+                        ? 'bg-[#F6C445] text-[#090D12]'
+                        : profState === 'proficient'
+                          ? 'bg-[#267347] text-white'
+                          : 'bg-[#18212B] text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {PROF_LABEL[profState]}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onRollSkill(skill)}
+                    className="text-left min-w-0 flex-1 flex items-center gap-1.5 cursor-pointer py-1"
+                  >
+                    <span className="text-xs sm:text-sm font-medium text-slate-100 truncate hover:text-white">
+                      {skill}
+                    </span>
+                    <span className="text-xs text-slate-400 shrink-0">
+                      ({ABILITY_LABELS[abilityKey].short})
+                    </span>
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   onClick={() => onRollSkill(skill)}
-                  className="text-left min-w-0 flex-1 flex items-center gap-1.5 cursor-pointer truncate"
+                  className="gba-btn font-mono text-xs font-bold text-white bg-[#232F3E] hover:bg-[#2F3F52] px-2.5 min-h-[34px] shrink-0 cursor-pointer"
                 >
-                  <span className="text-xs text-slate-100 truncate hover:text-white">
-                    {skill}
-                  </span>
-                  <span className="text-[11px] text-slate-400 shrink-0">
-                    ({ABILITY_LABELS[abilityKey].short})
-                  </span>
+                  {formatSignedModifier(mod)}
                 </button>
               </div>
-
-              <button
-                type="button"
-                onClick={() => onRollSkill(skill)}
-                className="gba-btn font-mono text-[11px] font-bold text-white bg-[#232F3E] hover:bg-[#2F3F52] px-2.5 py-1 sm:py-0.5 shrink-0 cursor-pointer"
-              >
-                {formatSignedModifier(mod)}
-              </button>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </section>
   );
 }

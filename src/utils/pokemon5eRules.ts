@@ -1,6 +1,7 @@
 import {
   AbilityKey,
   AbilityScores,
+  DamageModifierType,
   Move,
   PartyWorkspace,
   PokemonSheet,
@@ -9,6 +10,7 @@ import {
   SavingThrowProficiencies,
   SkillName,
   SkillProficiencies,
+  StabBaseMode,
   TrainerItem,
   TrainerItemCategory,
   TrainerSheet,
@@ -219,16 +221,48 @@ export function getProficiencyBonus(level: number, override?: number): number {
   return Math.ceil(clamped / 4) + 1;
 }
 
+export interface StabCalcOptions {
+  stabOverride?: number;
+  stabBase?: StabBaseMode;
+  stabBonus?: number;
+  proficiencyOverride?: number;
+  movePowerMod?: number;
+}
+
 /**
- * Pokémon 5e STAB Progression (2018 Ruleset):
- * Lv 1-2: +0 | Lv 3-6: +1 | Lv 7-10: +2 | Lv 11-14: +3 | Lv 15-18: +4 | Lv 19-20: +5
+ * Pokémon 5e STAB Calculation (poke5e.app/rules/combat):
+ * - 2024 Standard ('default' / 'proficiency'): Equal to Proficiency Bonus (+2..+6), min 0.
+ * - Legacy 2018 ('ruleset18'): Math.floor((level + 1) / 4) (+0..+5).
+ * - 'movepower': Max(0, movePowerMod); 'none': 0.
+ * - Adds optional stabBonus (e.g. Adaptability), clamped >= 0.
  */
-export function getStabValue(level: number, override?: number): number {
-  if (typeof override === 'number' && !Number.isNaN(override)) {
-    return Math.max(0, override);
+export function getStabValue(
+  level: number,
+  overrideOrOptions?: number | StabCalcOptions
+): number {
+  const options: StabCalcOptions =
+    typeof overrideOrOptions === 'number'
+      ? { stabOverride: overrideOrOptions }
+      : (overrideOrOptions ?? {});
+
+  if (typeof options.stabOverride === 'number' && !Number.isNaN(options.stabOverride)) {
+    return Math.max(0, options.stabOverride);
   }
+
   const lv = Math.max(1, Math.min(20, Math.floor(level || 1)));
-  return Math.floor((lv + 1) / 4);
+  const profBonus = getProficiencyBonus(lv, options.proficiencyOverride);
+  const mode = options.stabBase ?? 'default';
+
+  let base = profBonus;
+  if (mode === 'ruleset18') {
+    base = Math.floor((lv + 1) / 4);
+  } else if (mode === 'movepower') {
+    base = Math.max(0, options.movePowerMod ?? 0);
+  } else if (mode === 'none') {
+    base = 0;
+  }
+
+  return Math.max(0, base + (options.stabBonus ?? 0));
 }
 
 export function getSavingThrowModifier(
@@ -254,35 +288,66 @@ export function getSkillModifier(
   return base;
 }
 
+export function getMovePowerMod(pokemon: PokemonSheet, move: Move): number {
+  if (move.movePower === 'none') return 0;
+  return getAbilityModifier(pokemon.abilities[move.movePower] ?? 10);
+}
+
 export function hasMoveStab(pokemon: PokemonSheet, move: Move): boolean {
-  return move.stabEligible && pokemon.types.includes(move.type);
+  if (move.isHealing) return false;
+  if (move.damageModifierType === 'move+stab') return true;
+  return Boolean(move.stabEligible && pokemon.types.includes(move.type));
 }
 
 export function getMoveAttackBonus(pokemon: PokemonSheet, move: Move): number {
   const prof = getProficiencyBonus(pokemon.level, pokemon.proficiencyOverride);
-  const powerMod = getAbilityModifier(pokemon.abilities[move.movePower]);
-  return powerMod + prof;
+  const powerMod = getMovePowerMod(pokemon, move);
+  return powerMod + prof + (move.toHitModifier ?? 0);
 }
 
 export function getMoveSaveDc(pokemon: PokemonSheet, move: Move): number {
   const prof = getProficiencyBonus(pokemon.level, pokemon.proficiencyOverride);
-  const powerMod = getAbilityModifier(pokemon.abilities[move.movePower]);
-  return 8 + prof + powerMod;
+  const powerMod = getMovePowerMod(pokemon, move);
+  return 8 + prof + powerMod + (move.saveDcModifier ?? 0);
 }
 
 export function getMoveDamageBonus(pokemon: PokemonSheet, move: Move): {
+  modType: DamageModifierType;
   powerMod: number;
+  levelBonus: number;
+  flatRuleBonus: number;
+  customDmgMod: number;
   stabBonus: number;
+  baseDamageMod: number;
   totalBonus: number;
 } {
-  const powerMod = getAbilityModifier(pokemon.abilities[move.movePower]);
+  const modType: DamageModifierType = move.damageModifierType ?? 'move';
+  const rawPowerMod = getMovePowerMod(pokemon, move);
+  const powerMod = modType === 'none' || modType === 'level' ? 0 : rawPowerMod;
+  const levelBonus = modType === 'level' ? pokemon.level : 0;
+  const flatRuleBonus = modType === 'move+5' ? 5 : modType === 'move+10' ? 10 : 0;
+  const customDmgMod = move.damageModifier ?? 0;
+
   const stabBonus = hasMoveStab(pokemon, move)
-    ? getStabValue(pokemon.level, pokemon.stabOverride)
+    ? getStabValue(pokemon.level, {
+        stabOverride: pokemon.stabOverride,
+        stabBase: pokemon.stabBase,
+        stabBonus: pokemon.stabBonus,
+        proficiencyOverride: pokemon.proficiencyOverride,
+        movePowerMod: rawPowerMod,
+      })
     : 0;
+
+  const baseDamageMod = powerMod + levelBonus + flatRuleBonus;
   return {
+    modType,
     powerMod,
+    levelBonus,
+    flatRuleBonus,
+    customDmgMod,
     stabBonus,
-    totalBonus: powerMod + stabBonus,
+    baseDamageMod,
+    totalBonus: baseDamageMod + stabBonus + customDmgMod,
   };
 }
 
@@ -710,6 +775,7 @@ export function createStarterParty(): PartyWorkspace {
             ppMax: 15,
             movePower: 'dex',
             damageDice: '2d8',
+            damageModifierType: 'move',
             isAttack: true,
             stabEligible: true,
             range: '60 ft',
@@ -725,11 +791,12 @@ export function createStarterParty(): PartyWorkspace {
             ppMax: 20,
             movePower: 'dex',
             damageDice: '1d6',
+            damageModifierType: 'none',
             isAttack: true,
             stabEligible: true,
             range: 'Melee (5 ft)',
             castingTime: '1 Bonus Action',
-            description: 'Lunges at blinding speed. Can be used as a bonus action after moving.',
+            description: 'Lunges at blinding speed. Can be used as a bonus action after moving (no MOVE bonus to damage).',
           },
           {
             id: 'mv-thunder-wave',
@@ -794,13 +861,16 @@ export function createStarterParty(): PartyWorkspace {
             ppCurrent: 14,
             ppMax: 15,
             movePower: 'str',
-            damageDice: '2d8',
-            isAttack: true,
+            availablePowers: ['str', 'dex'],
+            damageDice: '2d10',
+            damageModifierType: 'move',
+            isAttack: false,
+            saveAbility: 'dex',
             stabEligible: true,
-            range: '30 ft line',
+            range: 'Self (40 ft cone)',
             castingTime: '1 Action',
             description:
-              'Scorches targets with intense flame. Targets failing a DEX save take burn damage.',
+              'Scorches targets in a 40 ft cone. Targets must succeed on a DEX save or take 2d10 + MOVE Fire damage (half on success).',
           },
           {
             id: 'mv-slash',
@@ -810,6 +880,7 @@ export function createStarterParty(): PartyWorkspace {
             ppMax: 20,
             movePower: 'str',
             damageDice: '1d10',
+            damageModifierType: 'move',
             isAttack: true,
             stabEligible: true,
             range: 'Melee (5 ft)',

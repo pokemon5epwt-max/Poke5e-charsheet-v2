@@ -546,21 +546,27 @@ export function executeRoll(req: RollRequest): RollEntry {
   const total = req.category === 'damage' ? Math.max(0, rawTotal) : rawTotal;
   const breakdown = `${joinSignedSegments(segments)} = ${total}`;
 
+  const hasDiceTerms = parsed.terms.length > 0;
   const formulaParts = parsed.terms.map((t, i) => {
     const count = req.isCriticalDamage && t.sign === 1 ? t.count * 2 : t.count;
     const prefix = i === 0 ? (t.sign === -1 ? '-' : '') : t.sign === -1 ? '- ' : '+ ';
     return `${prefix}${count}d${t.sides}${t.modifierText}`;
   });
-  if (combinedMod !== 0) {
-    formulaParts.push(
-      combinedMod < 0 ? `- ${Math.abs(combinedMod)}` : `+ ${combinedMod}`
-    );
+  if (combinedMod !== 0 || formulaParts.length === 0) {
+    if (formulaParts.length === 0) {
+      formulaParts.push(String(combinedMod));
+    } else {
+      formulaParts.push(
+        combinedMod < 0 ? `- ${Math.abs(combinedMod)}` : `+ ${combinedMod}`
+      );
+    }
   }
   const formula = formulaParts.join(' ');
 
   // Detect nat 20 / nat 1 when a custom roll contains a single kept d20
   const keptD20s = dieChips.filter((c) => c.kept && c.sides === 20);
   const singleKeptD20 = keptD20s.length === 1 ? keptD20s[0].value : undefined;
+  const appliedCrit = Boolean(req.isCriticalDamage && hasDiceTerms);
 
   return {
     id: createId('roll'),
@@ -569,7 +575,7 @@ export function executeRoll(req: RollRequest): RollEntry {
     ownerId: req.ownerId,
     characterId: req.characterId,
     characterName: req.characterName,
-    label: req.isCriticalDamage ? `${req.label} (CRIT 2×)` : req.label,
+    label: appliedCrit ? `${req.label} (CRIT 2×)` : req.label,
     category: req.category,
     rollMode: 'normal',
     visibility: req.visibility,
@@ -579,7 +585,7 @@ export function executeRoll(req: RollRequest): RollEntry {
     selectedDie: singleKeptD20,
     total,
     breakdown,
-    isCrit: Boolean(req.isCriticalDamage) || singleKeptD20 === 20,
+    isCrit: appliedCrit || singleKeptD20 === 20,
     isFumble: singleKeptD20 === 1,
     moveType: req.moveType,
     source: 'local',

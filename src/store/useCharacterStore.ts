@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist } from 'zustand/middleware';
 import {
   ActiveCharacter,
   DiceIntegrationMode,
@@ -35,6 +35,13 @@ import {
   normalizeTrainerItems,
   syncPokeballsFromItems,
 } from '../utils/pokemon5eRules';
+import {
+  loadInitiativeSnapshot,
+  resilientZustandStorage,
+  saveInitiativeSnapshot,
+} from '../utils/safeStorage';
+
+const initialInitSnapshot = loadInitiativeSnapshot();
 
 const pendingItemSyncTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -301,10 +308,10 @@ export const useCharacterStore = create<CharacterStoreState>()(
       diceIntegrationMode: 'internal',
       rollLog: [],
       rollLogClearedAt: undefined,
-      initiativeList: [],
-      initiativeTurnIndex: 0,
-      initiativeRound: 1,
-      initiativeUpdatedAt: undefined,
+      initiativeList: initialInitSnapshot?.entries ?? [],
+      initiativeTurnIndex: initialInitSnapshot?.turnIndex ?? 0,
+      initiativeRound: initialInitSnapshot?.round ?? 1,
+      initiativeUpdatedAt: initialInitSnapshot?.updatedAt,
       importHistory: [],
       bagSyncStatus: 'idle',
       bagSyncMessage: null,
@@ -1145,6 +1152,8 @@ export const useCharacterStore = create<CharacterStoreState>()(
               return {
                 ...incoming,
                 tempHp: incoming.tempHp > 0 ? incoming.tempHp : existing.tempHp,
+                stabBase: incoming.stabBase ?? existing.stabBase,
+                stabBonus: incoming.stabBonus ?? existing.stabBonus,
                 stabOverride: incoming.stabOverride ?? existing.stabOverride,
                 proficiencyOverride:
                   incoming.proficiencyOverride ?? existing.proficiencyOverride,
@@ -1212,9 +1221,7 @@ export const useCharacterStore = create<CharacterStoreState>()(
           return {
             rollLog: [entry, ...state.rollLog].slice(0, 120),
             ...(initiativePatch ?? {}),
-            ...(initiativePatch && entry.visibility === 'visible'
-              ? { initiativeUpdatedAt: now }
-              : {}),
+            ...(initiativePatch ? { initiativeUpdatedAt: now } : {}),
           };
         });
 
@@ -1246,6 +1253,9 @@ export const useCharacterStore = create<CharacterStoreState>()(
           return {
             rollLog: [roll, ...state.rollLog].slice(0, 120),
             ...(initiativePatch ?? {}),
+            ...(initiativePatch
+              ? { initiativeUpdatedAt: roll.timestamp || new Date().toISOString() }
+              : {}),
           };
         }),
 
@@ -1276,17 +1286,27 @@ export const useCharacterStore = create<CharacterStoreState>()(
             initiativeTurnIndex: state.initiativeTurnIndex,
           };
 
-          // Apply unseen initiative rolls chronologically so latest re-roll wins
+          const localInitUpdatedMs = state.initiativeUpdatedAt
+            ? Date.parse(state.initiativeUpdatedAt)
+            : 0;
+
+          // Apply unseen initiative rolls chronologically only if newer than local initiative state
           const sortedAsc = [...unseen].sort(
             (a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp)
           );
+          let latestAppliedRollTime = state.initiativeUpdatedAt;
           for (const roll of sortedAsc) {
+            const rollMs = Date.parse(roll.timestamp);
+            if (localInitUpdatedMs > 0 && !Number.isNaN(rollMs) && rollMs <= localInitUpdatedMs) {
+              continue;
+            }
             const patch = upsertInitiativeFromRoll(nextInitState, roll);
             if (patch) {
               nextInitState = {
                 ...nextInitState,
                 ...patch,
               };
+              latestAppliedRollTime = roll.timestamp;
             }
           }
 
@@ -1294,6 +1314,7 @@ export const useCharacterStore = create<CharacterStoreState>()(
             rollLog: combinedLog,
             initiativeList: nextInitState.initiativeList,
             initiativeTurnIndex: nextInitState.initiativeTurnIndex,
+            initiativeUpdatedAt: latestAppliedRollTime,
           };
         }),
 
@@ -1529,6 +1550,20 @@ export const useCharacterStore = create<CharacterStoreState>()(
           if (state.initiativeUpdatedAt && remote.updatedAt === state.initiativeUpdatedAt) {
             return state;
           }
+
+          const localMs = state.initiativeUpdatedAt
+            ? Date.parse(state.initiativeUpdatedAt)
+            : 0;
+          const remoteMs = remote.updatedAt ? Date.parse(remote.updatedAt) : 0;
+
+          // Never let older/stale OBR room metadata overwrite newer local initiative
+          if (
+            localMs > 0 &&
+            (!Number.isFinite(remoteMs) || remoteMs === 0 || localMs > remoteMs)
+          ) {
+            return state;
+          }
+
           if (isRemoteInitiativeEquivalent(state, remote)) {
             return state;
           }
@@ -1557,6 +1592,7 @@ export const useCharacterStore = create<CharacterStoreState>()(
     }),
     {
       name: 'pokemon5e-obr-sheet-v1',
+      storage: createJSONStorage(() => resilientZustandStorage),
       merge: (persistedState, currentState) => {
         const persisted = (persistedState || {}) as Partial<CharacterStoreState>;
         const mergedParty = persisted.party
@@ -1569,10 +1605,45 @@ export const useCharacterStore = create<CharacterStoreState>()(
             }
           : currentState.party;
 
+        const snapshot = loadInitiativeSnapshot();
+        const persistedInitList = Array.isArray(persisted.initiativeList)
+          ? persisted.initiativeList
+          : [];
+        const persistedMs = persisted.initiativeUpdatedAt
+          ? Date.parse(persisted.initiativeUpdatedAt)
+          : 0;
+        const snapshotMs = snapshot?.updatedAt ? Date.parse(snapshot.updatedAt) : 0;
+
+        const useSnapshot =
+          Boolean(snapshot) &&
+          ((persistedInitList.length === 0 && (snapshot?.entries.length ?? 0) > 0) ||
+            (Number.isFinite(snapshotMs) && snapshotMs > persistedMs));
+
+        const resolvedInitList = useSnapshot
+          ? snapshot!.entries
+          : persistedInitList;
+        const resolvedRound = useSnapshot
+          ? snapshot!.round
+          : Math.max(1, Math.floor(persisted.initiativeRound ?? currentState.initiativeRound ?? 1));
+        const rawTurn = useSnapshot
+          ? snapshot!.turnIndex
+          : (persisted.initiativeTurnIndex ?? currentState.initiativeTurnIndex ?? 0);
+        const resolvedTurn =
+          resolvedInitList.length > 0
+            ? Math.max(0, Math.min(rawTurn, resolvedInitList.length - 1))
+            : 0;
+        const resolvedUpdatedAt = useSnapshot
+          ? snapshot!.updatedAt
+          : persisted.initiativeUpdatedAt;
+
         return {
           ...currentState,
           ...persisted,
           party: mergedParty,
+          initiativeList: resolvedInitList,
+          initiativeTurnIndex: resolvedTurn,
+          initiativeRound: resolvedRound,
+          initiativeUpdatedAt: resolvedUpdatedAt,
         };
       },
       partialize: (state) => ({
@@ -1587,11 +1658,28 @@ export const useCharacterStore = create<CharacterStoreState>()(
         initiativeTurnIndex: state.initiativeTurnIndex,
         initiativeRound: state.initiativeRound,
         initiativeUpdatedAt: state.initiativeUpdatedAt,
-        importHistory: state.importHistory.slice(0, 12),
+        importHistory: state.importHistory.slice(0, 8),
       }),
     }
   )
 );
+
+// Mirror every initiative update to the dedicated lightweight snapshot so refreshes always preserve combat state
+useCharacterStore.subscribe((state, prevState) => {
+  if (
+    state.initiativeList !== prevState.initiativeList ||
+    state.initiativeTurnIndex !== prevState.initiativeTurnIndex ||
+    state.initiativeRound !== prevState.initiativeRound ||
+    state.initiativeUpdatedAt !== prevState.initiativeUpdatedAt
+  ) {
+    saveInitiativeSnapshot({
+      entries: state.initiativeList,
+      turnIndex: state.initiativeTurnIndex,
+      round: state.initiativeRound,
+      updatedAt: state.initiativeUpdatedAt,
+    });
+  }
+});
 
 export function selectActiveCharacter(state: CharacterStoreState): ActiveCharacter {
   if (state.activeCharacterId === 'trainer') {

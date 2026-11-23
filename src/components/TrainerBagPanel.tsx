@@ -293,10 +293,10 @@ export function TrainerBagPanel({
   return (
     <section className="gba-panel p-3.5 sm:p-4 space-y-3">
       {/* Header: Title, Money, Add Item CTA */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-display text-xs font-bold text-slate-100 uppercase">
+            <h3 className="font-display text-sm font-bold text-slate-100 uppercase tracking-tight">
               Trainer Bag
             </h3>
             <span className="text-xs text-slate-400 font-mono tabular-nums">
@@ -310,9 +310,9 @@ export function TrainerBagPanel({
           )}
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
           {isSheetEditing || editingMoney ? (
-            <div className="gba-well flex items-center gap-1 px-2 py-1">
+            <div className="gba-well flex items-center gap-1 px-2.5 py-1.5 min-h-[38px]">
               <Coins className="w-3.5 h-3.5 text-[#F6C445] shrink-0" />
               <span className="font-mono text-xs text-[#F6C445]">¥</span>
               <input
@@ -332,9 +332,9 @@ export function TrainerBagPanel({
                   type="button"
                   onClick={() => setEditingMoney(false)}
                   aria-label="Done editing money"
-                  className="p-0.5 text-[#38D46A] hover:text-white cursor-pointer"
+                  className="p-1 text-[#38D46A] hover:text-white cursor-pointer"
                 >
-                  <Check className="w-3.5 h-3.5" />
+                  <Check className="w-4 h-4" />
                 </button>
               )}
             </div>
@@ -343,7 +343,7 @@ export function TrainerBagPanel({
               type="button"
               onClick={() => setEditingMoney(true)}
               title="Tap to edit Pokédollars (¥)"
-              className="gba-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-[#131A22] hover:bg-[#232F3E] text-xs font-mono tabular-nums font-bold text-[#F6C445] cursor-pointer whitespace-nowrap"
+              className="gba-btn inline-flex items-center gap-1.5 px-3 min-h-[38px] bg-[#131A22] hover:bg-[#232F3E] text-xs font-mono tabular-nums font-bold text-[#F6C445] cursor-pointer whitespace-nowrap"
             >
               <Coins className="w-3.5 h-3.5 shrink-0" />
               <span>¥{trainer.money.toLocaleString()}</span>
@@ -353,7 +353,7 @@ export function TrainerBagPanel({
           <button
             type="button"
             onClick={() => setShowAddForm((prev) => !prev)}
-            className={`gba-btn inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold cursor-pointer whitespace-nowrap shrink-0 ${
+            className={`gba-btn inline-flex items-center gap-1.5 px-3 min-h-[38px] text-xs font-semibold cursor-pointer whitespace-nowrap shrink-0 ${
               showAddForm
                 ? 'bg-[#283747] text-white'
                 : 'bg-[#D62839] hover:bg-[#E63946] text-white'
@@ -361,12 +361,12 @@ export function TrainerBagPanel({
           >
             {showAddForm ? (
               <>
-                <X className="w-3.5 h-3.5" />
+                <X className="w-4 h-4" />
                 <span>Close</span>
               </>
             ) : (
               <>
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-4 h-4" />
                 <span>Add Item</span>
               </>
             )}
@@ -425,16 +425,16 @@ export function TrainerBagPanel({
               )}
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex flex-wrap items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 disabled={isSyncing}
                 onClick={() => void pullBagFromPoke5e()}
                 title="Ambil item & Pokédollars terbaru dari poke5e.app"
-                className="gba-btn inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-[#267347] hover:bg-[#2E8A56] disabled:opacity-50 cursor-pointer whitespace-nowrap shrink-0"
+                className="gba-btn inline-flex items-center gap-1 px-2.5 min-h-[34px] text-xs font-semibold text-white bg-[#267347] hover:bg-[#2E8A56] disabled:opacity-50 cursor-pointer whitespace-nowrap shrink-0"
               >
                 <RefreshCw
-                  className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`}
+                  className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`}
                 />
                 <span>{isSyncing ? 'Sync...' : 'Sync Bag'}</span>
               </button>
@@ -445,9 +445,9 @@ export function TrainerBagPanel({
                   disabled={isSyncing}
                   onClick={() => void pushUnsyncedItemsToPoke5e()}
                   title="Kirim item lokal yang belum ada di poke5e.app"
-                  className="gba-btn inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-[#1D4E89] hover:bg-[#2563A8] disabled:opacity-50 cursor-pointer whitespace-nowrap shrink-0"
+                  className="gba-btn inline-flex items-center gap-1 px-2.5 min-h-[34px] text-xs font-semibold text-white bg-[#1D4E89] hover:bg-[#2563A8] disabled:opacity-50 cursor-pointer whitespace-nowrap shrink-0"
                 >
-                  <UploadCloud className="w-3 h-3" />
+                  <UploadCloud className="w-3.5 h-3.5" />
                   <span>Push ({unsyncedLocalCount})</span>
                 </button>
               )}
@@ -463,13 +463,13 @@ export function TrainerBagPanel({
                     ? 'Kelola Access Key poke5e.app'
                     : 'Masukkan Access Key poke5e.app agar edit Bag otomatis tersimpan ke poke5e.app'
                 }
-                className={`gba-btn inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium cursor-pointer whitespace-nowrap shrink-0 ${
+                className={`gba-btn inline-flex items-center gap-1 px-2.5 min-h-[34px] text-xs font-medium cursor-pointer whitespace-nowrap shrink-0 ${
                   hasWriteSync
                     ? 'bg-[#1A2937] text-[#38D46A] hover:bg-[#243648]'
                     : 'bg-[#1B2530] text-[#F6C445] hover:bg-[#273647]'
                 }`}
               >
-                <KeyRound className="w-3 h-3" />
+                <KeyRound className="w-3.5 h-3.5" />
                 <span>{hasWriteSync ? 'Write Key ✓' : 'Write Key'}</span>
               </button>
             </div>
@@ -674,9 +674,9 @@ export function TrainerBagPanel({
       )}
 
       {/* Pocket Filter Tabs + Compact Search */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         <div
-          className="flex items-center gap-1 overflow-x-auto pb-0.5"
+          className="flex items-center gap-1.5 overflow-x-auto pb-0.5"
           role="tablist"
           aria-label="Bag Pockets"
         >
@@ -685,13 +685,13 @@ export function TrainerBagPanel({
             role="tab"
             aria-selected={selectedCategory === 'all'}
             onClick={() => setSelectedCategory('all')}
-            className={`gba-btn px-2.5 py-1 text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`gba-btn px-2.5 min-h-[34px] text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
               selectedCategory === 'all'
                 ? 'bg-[#283747] text-white'
                 : 'bg-[#131A22] text-slate-400 hover:text-slate-100'
             }`}
           >
-            All <span className="font-mono tabular-nums text-[10px]">({categoryCounts.all})</span>
+            All <span className="font-mono tabular-nums text-[11px]">({categoryCounts.all})</span>
           </button>
 
           {TRAINER_ITEM_CATEGORIES.map((cat) => {
@@ -704,7 +704,7 @@ export function TrainerBagPanel({
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`gba-btn px-2.5 py-1 text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
+                className={`gba-btn px-2.5 min-h-[34px] text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
                   isActive
                     ? 'bg-[#283747] text-[#F6C445]'
                     : 'bg-[#131A22] text-slate-400 hover:text-slate-100'
@@ -712,13 +712,13 @@ export function TrainerBagPanel({
               >
                 <span className="sm:hidden">{cat.shortLabel}</span>
                 <span className="hidden sm:inline">{cat.label}</span>{' '}
-                <span className="font-mono tabular-nums text-[10px]">({count})</span>
+                <span className="font-mono tabular-nums text-[11px]">({count})</span>
               </button>
             );
           })}
         </div>
 
-        <div className="relative w-full sm:w-44 shrink-0">
+        <div className="relative w-full sm:w-48 shrink-0">
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
@@ -726,7 +726,7 @@ export function TrainerBagPanel({
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Filter bag..."
             aria-label="Filter bag items"
-            className="gba-well w-full pl-8 pr-3 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none"
+            className="gba-well w-full pl-8 pr-3 py-2 text-xs text-slate-100 placeholder:text-slate-500 focus:outline-none"
           />
         </div>
       </div>
@@ -816,7 +816,7 @@ export function TrainerBagPanel({
             return (
               <div
                 key={item.id}
-                className={`gba-well px-2.5 sm:px-3 py-2 flex items-center justify-between gap-2.5 transition-opacity ${
+                className={`gba-well px-3 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-opacity ${
                   item.quantity === 0 ? 'opacity-65' : ''
                 }`}
               >
@@ -826,20 +826,20 @@ export function TrainerBagPanel({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-1.5 flex-wrap">
-                      <span className="text-xs sm:text-sm font-semibold text-slate-100 leading-snug">
+                      <span className="text-sm font-semibold text-slate-100 leading-snug">
                         {item.name}
                       </span>
-                      <span className="text-[11px] text-slate-400">
+                      <span className="text-xs text-slate-400">
                         · {CATEGORY_LABEL_MAP[item.category]}
                       </span>
                       {hasWriteSync && typeof item.poke5eId !== 'number' && (
-                        <span className="text-[11px] text-[#F6C445]">
+                        <span className="text-xs text-[#F6C445] font-medium">
                           · Lokal
                         </span>
                       )}
                     </div>
                     {item.description && (
-                      <p className="text-xs text-slate-400 leading-snug mt-0.5 break-words">
+                      <p className="text-xs text-slate-300 leading-relaxed mt-0.5 break-words">
                         {item.description}
                       </p>
                     )}
@@ -847,51 +847,55 @@ export function TrainerBagPanel({
                 </div>
 
                 {/* Quantity Stepper & Actions */}
-                <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    aria-label={`Decrease ${item.name} quantity`}
-                    onClick={() => onAdjustQty(item.id, -1)}
-                    disabled={item.quantity <= 0}
-                    className="gba-btn w-8 h-8 sm:w-7 sm:h-7 inline-flex items-center justify-center bg-[#1B242E] hover:bg-[#263342] disabled:opacity-40 text-slate-200 cursor-pointer"
-                  >
-                    <Minus className="w-3.5 h-3.5" />
-                  </button>
+                <div className="flex items-center justify-between sm:justify-end gap-1.5 pt-2 sm:pt-0 border-t sm:border-t-0 border-[#090D12]/80 shrink-0">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      aria-label={`Decrease ${item.name} quantity`}
+                      onClick={() => onAdjustQty(item.id, -1)}
+                      disabled={item.quantity <= 0}
+                      className="gba-btn w-9 h-9 sm:w-8 sm:h-8 inline-flex items-center justify-center bg-[#1B242E] hover:bg-[#263342] disabled:opacity-40 text-slate-200 cursor-pointer"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
 
-                  <span
-                    className={`font-mono tabular-nums text-xs font-bold w-7 text-center ${
-                      item.quantity === 0 ? 'text-slate-500' : 'text-white'
-                    }`}
-                  >
-                    {item.quantity}
-                  </span>
+                    <span
+                      className={`font-mono tabular-nums text-sm font-bold w-8 text-center ${
+                        item.quantity === 0 ? 'text-slate-500' : 'text-white'
+                      }`}
+                    >
+                      {item.quantity}
+                    </span>
 
-                  <button
-                    type="button"
-                    aria-label={`Increase ${item.name} quantity`}
-                    onClick={() => onAdjustQty(item.id, 1)}
-                    className="gba-btn w-8 h-8 sm:w-7 sm:h-7 inline-flex items-center justify-center bg-[#1B242E] hover:bg-[#263342] text-slate-200 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
+                    <button
+                      type="button"
+                      aria-label={`Increase ${item.name} quantity`}
+                      onClick={() => onAdjustQty(item.id, 1)}
+                      className="gba-btn w-9 h-9 sm:w-8 sm:h-8 inline-flex items-center justify-center bg-[#1B242E] hover:bg-[#263342] text-slate-200 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
 
-                  <button
-                    type="button"
-                    aria-label={`Edit ${item.name}`}
-                    onClick={() => startEditItem(item)}
-                    className="gba-btn w-8 h-8 sm:w-7 sm:h-7 inline-flex items-center justify-center bg-[#141C24] hover:bg-[#253240] text-slate-400 hover:text-slate-100 cursor-pointer ml-0.5"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      aria-label={`Edit ${item.name}`}
+                      onClick={() => startEditItem(item)}
+                      className="gba-btn w-9 h-9 sm:w-8 sm:h-8 inline-flex items-center justify-center bg-[#141C24] hover:bg-[#253240] text-slate-300 hover:text-slate-100 cursor-pointer"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
 
-                  <button
-                    type="button"
-                    aria-label={`Remove ${item.name}`}
-                    onClick={() => onRemoveItem(item.id)}
-                    className="gba-btn w-8 h-8 sm:w-7 sm:h-7 inline-flex items-center justify-center bg-[#141C24] hover:bg-[#4A1922] text-slate-400 hover:text-rose-300 cursor-pointer"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${item.name}`}
+                      onClick={() => onRemoveItem(item.id)}
+                      className="gba-btn w-9 h-9 sm:w-8 sm:h-8 inline-flex items-center justify-center bg-[#141C24] hover:bg-[#4A1922] text-slate-300 hover:text-rose-300 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );

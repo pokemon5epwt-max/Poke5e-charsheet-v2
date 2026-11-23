@@ -11,6 +11,7 @@ import { TopBar } from './components/TopBar';
 import { useCharacterStore } from './store/useCharacterStore';
 import { initObrBridge } from './utils/obrBridge';
 import { getRollCategoryLabel } from './utils/pokemon5eRules';
+import { loadActiveTab, saveActiveTab } from './utils/safeStorage';
 
 export default function App() {
   const party = useCharacterStore((s) => s.party);
@@ -23,7 +24,9 @@ export default function App() {
   const mergeRoomRolls = useCharacterStore((s) => s.mergeRoomRolls);
   const syncRemoteInitiative = useCharacterStore((s) => s.syncRemoteInitiative);
 
-  const [activeTab, setActiveTab] = useState<'sheet' | 'initiative' | 'history'>('sheet');
+  const [activeTab, setActiveTab] = useState<'sheet' | 'initiative' | 'history'>(() =>
+    loadActiveTab()
+  );
   const [showImportModal, setShowImportModal] = useState(false);
   const [showAddPokemonModal, setShowAddPokemonModal] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -57,6 +60,7 @@ export default function App() {
 
   const handleSelectTab = (tab: 'sheet' | 'initiative' | 'history') => {
     setActiveTab(tab);
+    saveActiveTab(tab);
     if (tab === 'history') {
       setUnreadCount(0);
     }
@@ -84,7 +88,7 @@ export default function App() {
   const currentTurn = initiativeList[initiativeTurnIndex];
 
   return (
-    <div className="h-screen w-full bg-[#141A21] text-[#EDF2F7] flex flex-col overflow-hidden">
+    <div className="h-[100dvh] w-full bg-[#141A21] text-[#EDF2F7] flex flex-col overflow-hidden">
       <TopBar
         onOpenImport={() => setShowImportModal(true)}
         onExportJson={handleExportJson}
@@ -92,10 +96,10 @@ export default function App() {
         unreadLogCount={unreadCount}
       />
 
-      {/* GBA PokéNav Mode Switcher: Sheet | Initiative | History (< xl) */}
-      <div className="bg-[#18212B] border-b-2 border-[#090D12] px-2.5 sm:px-4 lg:px-6 flex items-center justify-between gap-2 shrink-0">
+      {/* Tablet / OBR Popover / Desktop Mode Switcher (hidden on mobile; mobile uses Bottom Tab Bar) */}
+      <div className="hidden md:flex bg-[#18212B] border-b-2 border-[#090D12] px-4 lg:px-6 items-center justify-between gap-2 shrink-0">
         <div
-          className="flex items-center gap-1 py-1 overflow-x-auto min-w-0"
+          className="flex items-center gap-1.5 py-1.5 overflow-x-auto min-w-0"
           role="tablist"
           aria-label="Workspace View"
         >
@@ -104,10 +108,10 @@ export default function App() {
             role="tab"
             aria-selected={activeTab === 'sheet'}
             onClick={() => handleSelectTab('sheet')}
-            className={`gba-btn inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`gba-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'sheet'
                 ? 'bg-[#283747] text-white'
-                : 'bg-[#131A22] text-slate-400 hover:text-slate-100'
+                : 'bg-[#131A22] text-slate-300 hover:text-white'
             }`}
           >
             {activeTab === 'sheet' ? (
@@ -123,10 +127,10 @@ export default function App() {
             role="tab"
             aria-selected={activeTab === 'initiative'}
             onClick={() => handleSelectTab('initiative')}
-            className={`gba-btn inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`gba-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'initiative'
                 ? 'bg-[#283747] text-[#F6C445]'
-                : 'bg-[#131A22] text-slate-400 hover:text-slate-100'
+                : 'bg-[#131A22] text-slate-300 hover:text-white'
             }`}
           >
             {activeTab === 'initiative' ? (
@@ -134,9 +138,8 @@ export default function App() {
             ) : (
               <ListOrdered className="w-3.5 h-3.5" />
             )}
-            <span>Init</span>
-            <span className="hidden sm:inline">iative</span>
-            <span className="font-mono tabular-nums text-[10px] text-slate-300">
+            <span>Initiative</span>
+            <span className="font-mono tabular-nums text-xs text-slate-300">
               ({initiativeList.length})
             </span>
           </button>
@@ -146,10 +149,10 @@ export default function App() {
             role="tab"
             aria-selected={activeTab === 'history'}
             onClick={() => handleSelectTab('history')}
-            className={`gba-btn inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
+            className={`gba-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold whitespace-nowrap shrink-0 cursor-pointer ${
               activeTab === 'history'
                 ? 'bg-[#283747] text-[#38D46A]'
-                : 'bg-[#131A22] text-slate-400 hover:text-slate-100'
+                : 'bg-[#131A22] text-slate-300 hover:text-white'
             }`}
           >
             {activeTab === 'history' ? (
@@ -158,11 +161,11 @@ export default function App() {
               <History className="w-3.5 h-3.5" />
             )}
             <span>History</span>
-            <span className="font-mono tabular-nums text-[10px] text-slate-300">
+            <span className="font-mono tabular-nums text-xs text-slate-300">
               ({rollLog.length})
             </span>
             {unreadCount > 0 && (
-              <span className="font-mono tabular-nums text-[10px] font-bold bg-[#F6C445] text-[#090D12] px-1 leading-tight">
+              <span className="font-mono tabular-nums text-[11px] font-bold bg-[#F6C445] text-[#090D12] px-1.5 leading-tight rounded-sm">
                 +{unreadCount}
               </span>
             )}
@@ -177,27 +180,27 @@ export default function App() {
               ? `Round ${initiativeRound} · Active Turn: ${currentTurn.characterName}`
               : `Round ${initiativeRound} · Open Initiative Tracker`
           }
-          className="gba-btn inline-flex items-center gap-1 px-2 py-1 text-[11px] bg-[#131A22] hover:bg-[#232F3E] text-[#F6C445] max-w-[110px] sm:max-w-[230px] cursor-pointer shrink-0"
+          className="gba-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-[#131A22] hover:bg-[#232F3E] text-[#F6C445] max-w-[240px] cursor-pointer shrink-0"
         >
-          <span className="font-mono tabular-nums font-bold text-[#090D12] bg-[#F6C445] px-1 leading-tight">
+          <span className="font-mono tabular-nums font-bold text-[#090D12] bg-[#F6C445] px-1.5 py-0.5 leading-none rounded-sm">
             R{initiativeRound}
           </span>
           {currentTurn ? (
-            <span className="truncate text-slate-100">▶ {currentTurn.characterName}</span>
-          ) : (
-            <span className="hidden sm:inline text-slate-300">
-              Round {initiativeRound}
+            <span className="truncate font-medium text-slate-100">
+              ▶ {currentTurn.characterName}
             </span>
+          ) : (
+            <span className="text-slate-300 font-medium">Round {initiativeRound}</span>
           )}
         </button>
       </div>
 
-      {/* Dismissible GBA Battle Dialogue Latest Roll Banner (< xl) */}
+      {/* Dismissible Latest Roll Banner (< xl) */}
       {latestRoll &&
         activeTab !== 'history' &&
         dismissedRollId !== latestRoll.id && (
           <div
-            className={`xl:hidden px-2.5 sm:px-3.5 py-1 border-b-2 border-[#090D12] flex items-center justify-between gap-2 text-xs ${
+            className={`xl:hidden px-3 py-1.5 border-b-2 border-[#090D12] flex items-center justify-between gap-2 text-xs shrink-0 ${
               latestRoll.visibility === 'hidden' ? 'bg-[#2A1D3D]' : 'bg-[#1C2530]'
             }`}
           >
@@ -209,10 +212,10 @@ export default function App() {
               <span className="truncate text-slate-200">
                 {latestRoll.visibility === 'hidden' ? '[GM] ' : ''}
                 <strong className="text-white">{latestRoll.characterName}</strong> —{' '}
-                <span className="text-[#F6C445]">
+                <span className="text-[#F6C445] font-medium">
                   {getRollCategoryLabel(latestRoll.category)}
                 </span>
-                : {latestRoll.label}
+                <span className="hidden sm:inline">: {latestRoll.label}</span>
               </span>
               <span
                 className={`font-mono font-bold shrink-0 text-xs ${
@@ -231,7 +234,7 @@ export default function App() {
               type="button"
               onClick={() => setDismissedRollId(latestRoll.id)}
               aria-label="Dismiss roll notification"
-              className="p-0.5 text-slate-400 hover:text-white shrink-0 cursor-pointer"
+              className="p-1 text-slate-400 hover:text-white shrink-0 cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -240,7 +243,10 @@ export default function App() {
 
       {/* Main Layout: Left Party Sidebar + Center Sheet/Initiative/History + Right Docked Log */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden relative">
-        <PartySidebar onOpenAddPokemon={() => setShowAddPokemonModal(true)} />
+        <PartySidebar
+          onOpenAddPokemon={() => setShowAddPokemonModal(true)}
+          showMobileStrip={activeTab === 'sheet'}
+        />
 
         {activeTab === 'sheet' && (
           <CharacterSheet onOpenImport={() => setShowImportModal(true)} />
@@ -256,6 +262,85 @@ export default function App() {
         )}
       </div>
 
+      {/* Thumb-Zone Mobile Bottom Tab Navigation (< md) */}
+      <nav
+        aria-label="Mobile Navigation"
+        className="md:hidden shrink-0 border-t-2 border-[#090D12] bg-[#131A22] grid grid-cols-3 h-14 pb-[env(safe-area-inset-bottom)] z-30"
+      >
+        <button
+          type="button"
+          onClick={() => handleSelectTab('sheet')}
+          className={`flex flex-col items-center justify-center gap-0.5 min-h-[44px] text-xs font-semibold transition-colors cursor-pointer ${
+            activeTab === 'sheet'
+              ? 'bg-[#1E2833] text-white border-t-2 border-t-[#E63946] -mt-[2px]'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <ScrollText
+            className={`w-4 h-4 ${
+              activeTab === 'sheet' ? 'text-[#E63946]' : 'text-slate-400'
+            }`}
+          />
+          <span>Sheet</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleSelectTab('initiative')}
+          className={`flex flex-col items-center justify-center gap-0.5 min-h-[44px] text-xs font-semibold transition-colors cursor-pointer relative ${
+            activeTab === 'initiative'
+              ? 'bg-[#1E2833] text-[#F6C445] border-t-2 border-t-[#F6C445] -mt-[2px]'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <div className="flex items-center gap-1">
+            <ListOrdered
+              className={`w-4 h-4 ${
+                activeTab === 'initiative' ? 'text-[#F6C445]' : 'text-slate-400'
+              }`}
+            />
+            <span className="font-mono tabular-nums text-[11px] font-bold px-1 rounded-sm bg-[#263342] text-[#F6C445]">
+              R{initiativeRound}
+            </span>
+          </div>
+          <span>
+            Init{' '}
+            <span className="font-mono tabular-nums text-[11px] opacity-80">
+              ({initiativeList.length})
+            </span>
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleSelectTab('history')}
+          className={`flex flex-col items-center justify-center gap-0.5 min-h-[44px] text-xs font-semibold transition-colors cursor-pointer relative ${
+            activeTab === 'history'
+              ? 'bg-[#1E2833] text-[#38D46A] border-t-2 border-t-[#38D46A] -mt-[2px]'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <div className="flex items-center gap-1">
+            <History
+              className={`w-4 h-4 ${
+                activeTab === 'history' ? 'text-[#38D46A]' : 'text-slate-400'
+              }`}
+            />
+            {unreadCount > 0 && (
+              <span className="font-mono tabular-nums text-[10px] font-bold bg-[#F6C445] text-[#090D12] px-1 rounded-sm leading-tight">
+                +{unreadCount}
+              </span>
+            )}
+          </div>
+          <span>
+            History{' '}
+            <span className="font-mono tabular-nums text-[11px] opacity-80">
+              ({rollLog.length})
+            </span>
+          </span>
+        </button>
+      </nav>
+
       {showImportModal && (
         <ImportPoke5eModal onClose={() => setShowImportModal(false)} />
       )}
@@ -266,3 +351,4 @@ export default function App() {
     </div>
   );
 }
+

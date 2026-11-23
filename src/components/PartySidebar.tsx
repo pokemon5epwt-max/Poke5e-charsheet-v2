@@ -7,6 +7,7 @@ import { LeagueBadgeIcon, PixelCursor, PokeballIcon } from './PokemonAccessories
 interface PartySidebarProps {
   onOpenAddPokemon: () => void;
   onSelectCallback?: () => void;
+  showMobileStrip?: boolean;
 }
 
 function getGbaHpBarColor(hpPct: number): string {
@@ -18,6 +19,7 @@ function getGbaHpBarColor(hpPct: number): string {
 export function PartySidebar({
   onOpenAddPokemon,
   onSelectCallback,
+  showMobileStrip = true,
 }: PartySidebarProps) {
   const party = useCharacterStore((s) => s.party);
   const activeCharacterId = useCharacterStore((s) => s.activeCharacterId);
@@ -41,7 +43,7 @@ export function PartySidebar({
 
     el.addEventListener('wheel', handleWheel, { passive: false });
     return () => el.removeEventListener('wheel', handleWheel);
-  }, [party.pokemon.length]);
+  }, [party.pokemon.length, showMobileStrip]);
 
   const selectCharacter = (id: 'trainer' | string) => {
     setActiveCharacter(id);
@@ -55,123 +57,125 @@ export function PartySidebar({
 
   return (
     <>
-      {/* Compact GBA Party Strip for Mobile & Medium Popover (< lg) */}
-      <div className="lg:hidden border-b-2 border-[#090D12] bg-[#17202A] shrink-0 flex items-stretch">
-        <div
-          ref={beltRef}
-          className="flex-1 min-w-0 px-2.5 py-1.5 flex items-center gap-1.5 overflow-x-auto"
-        >
-          <button
-            type="button"
-            onClick={() => selectCharacter('trainer')}
-            className={`shrink-0 px-2 py-1 border-2 border-[#090D12] text-left cursor-pointer min-w-[96px] max-w-[124px] ${
-              activeCharacterId === 'trainer'
-                ? 'bg-[#263847] shadow-[inset_2px_2px_0_#E63946,inset_-2px_-2px_0_#15202B]'
-                : 'bg-[#1D2733] hover:bg-[#23303E] shadow-[inset_1px_1px_0_#314254]'
-            }`}
+      {/* Compact Party Strip for Mobile & Medium Popover (< lg), shown on Sheet tab */}
+      {showMobileStrip && (
+        <div className="lg:hidden border-b-2 border-[#090D12] bg-[#17202A] shrink-0 flex items-stretch">
+          <div
+            ref={beltRef}
+            className="flex-1 min-w-0 px-2.5 py-2 flex items-center gap-2 overflow-x-auto"
           >
-            <div className="flex items-center justify-between gap-1.5">
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-white truncate">
-                {activeCharacterId === 'trainer' ? (
-                  <PixelCursor className="w-2 h-2 text-[#F6C445]" />
-                ) : (
-                  <User className="w-3 h-3 text-[#E63946] shrink-0" />
-                )}
-                <span className="truncate">{party.trainer.name}</span>
-              </span>
-            </div>
-            <div className="mt-1 flex items-center gap-1.5">
-              <div className="flex-1 h-1.5 bg-[#0B1016] border border-[#090D12]">
-                <div
-                  className={`h-full ${getGbaHpBarColor(trainerHpPct)}`}
-                  style={{ width: `${trainerHpPct}%` }}
-                />
-              </div>
-              <span className="font-mono tabular-nums text-[9px] text-slate-300 shrink-0">
-                {party.trainer.hpCurrent}/{party.trainer.hpMax}
-              </span>
-            </div>
-          </button>
-
-          {party.pokemon.map((mon) => {
-            const isActive = activeCharacterId === mon.id;
-            const hpPct =
-              mon.hpMax > 0
-                ? Math.max(0, Math.min(100, (mon.hpCurrent / mon.hpMax) * 100))
-                : 0;
-            const primaryType = mon.types[0] ?? 'Normal';
-            const typeStyle = TYPE_STYLES[primaryType];
-
-            return (
-              <button
-                key={mon.id}
-                type="button"
-                onClick={() => selectCharacter(mon.id)}
-                style={
-                  isActive
-                    ? {
-                        boxShadow: `inset 2px 2px 0 ${typeStyle.hex}99, inset -2px -2px 0 #121820`,
-                      }
-                    : undefined
-                }
-                className={`shrink-0 px-2 py-1 border-2 border-[#090D12] text-left cursor-pointer min-w-[96px] max-w-[124px] ${
-                  isActive
-                    ? 'bg-[#263847]'
-                    : 'bg-[#1D2733] hover:bg-[#23303E] shadow-[inset_1px_1px_0_#314254]'
-                }`}
-              >
-                <div className="flex items-center gap-1">
-                  <PokeballIcon
-                    variant={mon.hpCurrent <= 0 ? 'fainted' : 'poke'}
-                    className="w-3 h-3 shrink-0"
-                  />
-                  <span className="text-[11px] font-semibold text-white truncate">
-                    {mon.name}
-                  </span>
-                </div>
-                <div className="mt-1 flex items-center gap-1.5">
-                  <div className="flex-1 h-1.5 bg-[#0B1016] border border-[#090D12]">
-                    <div
-                      className={`h-full ${getGbaHpBarColor(hpPct)}`}
-                      style={{ width: `${hpPct}%` }}
-                    />
-                  </div>
-                  <span className="font-mono tabular-nums text-[9px] text-slate-300 shrink-0">
-                    {mon.hpCurrent}/{mon.hpMax}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Pinned Quick Actions (Always Reachable) */}
-        <div className="shrink-0 flex items-center gap-1 px-2 py-1.5 border-l-2 border-[#090D12] bg-[#141C24]">
-          {party.pokemon.length < 6 && (
             <button
               type="button"
-              onClick={onOpenAddPokemon}
-              title="Add Pokémon to Party"
-              aria-label="Add Pokémon to Party"
-              className="gba-btn h-8 px-2 bg-[#1D2733] hover:bg-[#263342] text-xs font-medium text-[#F6C445] inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
+              onClick={() => selectCharacter('trainer')}
+              className={`shrink-0 px-2.5 py-1.5 min-h-[44px] border-2 border-[#090D12] rounded-sm text-left cursor-pointer min-w-[112px] max-w-[144px] flex flex-col justify-center ${
+                activeCharacterId === 'trainer'
+                  ? 'bg-[#263847] shadow-[inset_2px_2px_0_#E63946,inset_-2px_-2px_0_#15202B]'
+                  : 'bg-[#1D2733] hover:bg-[#23303E] shadow-[inset_1px_1px_0_#314254]'
+              }`}
             >
-              <Plus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Add</span>
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white truncate">
+                  {activeCharacterId === 'trainer' ? (
+                    <PixelCursor className="w-2.5 h-2.5 text-[#F6C445]" />
+                  ) : (
+                    <User className="w-3.5 h-3.5 text-[#E63946] shrink-0" />
+                  )}
+                  <span className="truncate">{party.trainer.name}</span>
+                </span>
+              </div>
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <div className="flex-1 h-2 bg-[#0B1016] border border-[#090D12]">
+                  <div
+                    className={`h-full ${getGbaHpBarColor(trainerHpPct)}`}
+                    style={{ width: `${trainerHpPct}%` }}
+                  />
+                </div>
+                <span className="font-mono tabular-nums text-[11px] font-medium text-slate-200 shrink-0">
+                  {party.trainer.hpCurrent}/{party.trainer.hpMax}
+                </span>
+              </div>
             </button>
-          )}
 
-          <button
-            type="button"
-            onClick={longRestParty}
-            title="Pokémon Center Rest (Restore Full HP & PP)"
-            aria-label="Pokémon Center Rest"
-            className="gba-btn h-8 px-2 bg-[#1F4E37] hover:bg-[#266044] text-xs font-medium text-white inline-flex items-center gap-1 cursor-pointer whitespace-nowrap"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-[#38D46A]" />
-            <span className="hidden sm:inline">Rest</span>
-          </button>
+            {party.pokemon.map((mon) => {
+              const isActive = activeCharacterId === mon.id;
+              const hpPct =
+                mon.hpMax > 0
+                  ? Math.max(0, Math.min(100, (mon.hpCurrent / mon.hpMax) * 100))
+                  : 0;
+              const primaryType = mon.types[0] ?? 'Normal';
+              const typeStyle = TYPE_STYLES[primaryType];
+
+              return (
+                <button
+                  key={mon.id}
+                  type="button"
+                  onClick={() => selectCharacter(mon.id)}
+                  style={
+                    isActive
+                      ? {
+                          boxShadow: `inset 2px 2px 0 ${typeStyle.hex}99, inset -2px -2px 0 #121820`,
+                        }
+                      : undefined
+                  }
+                  className={`shrink-0 px-2.5 py-1.5 min-h-[44px] border-2 border-[#090D12] rounded-sm text-left cursor-pointer min-w-[112px] max-w-[144px] flex flex-col justify-center ${
+                    isActive
+                      ? 'bg-[#263847]'
+                      : 'bg-[#1D2733] hover:bg-[#23303E] shadow-[inset_1px_1px_0_#314254]'
+                  }`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <PokeballIcon
+                      variant={mon.hpCurrent <= 0 ? 'fainted' : 'poke'}
+                      className="w-3.5 h-3.5 shrink-0"
+                    />
+                    <span className="text-xs font-semibold text-white truncate">
+                      {mon.name}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <div className="flex-1 h-2 bg-[#0B1016] border border-[#090D12]">
+                      <div
+                        className={`h-full ${getGbaHpBarColor(hpPct)}`}
+                        style={{ width: `${hpPct}%` }}
+                      />
+                    </div>
+                    <span className="font-mono tabular-nums text-[11px] font-medium text-slate-200 shrink-0">
+                      {mon.hpCurrent}/{mon.hpMax}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Pinned Quick Actions (Always Reachable, 40px+ Touch Targets) */}
+          <div className="shrink-0 flex items-center gap-1.5 px-2 py-1.5 border-l-2 border-[#090D12] bg-[#141C24]">
+            {party.pokemon.length < 6 && (
+              <button
+                type="button"
+                onClick={onOpenAddPokemon}
+                title="Add Pokémon to Party"
+                aria-label="Add Pokémon to Party"
+                className="gba-btn min-h-[40px] min-w-[40px] px-2.5 bg-[#1D2733] hover:bg-[#263342] text-xs font-semibold text-[#F6C445] inline-flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Add</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={longRestParty}
+              title="Pokémon Center Rest (Restore Full HP & PP)"
+              aria-label="Pokémon Center Rest"
+              className="gba-btn min-h-[40px] min-w-[40px] px-2.5 bg-[#1F4E37] hover:bg-[#266044] text-xs font-semibold text-white inline-flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
+            >
+              <Sparkles className="w-4 h-4 text-[#38D46A]" />
+              <span className="hidden sm:inline">Rest</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Full Left GBA 6-Slot Party Menu for Wide Desktop (lg+) */}
       <aside className="hidden lg:flex w-[276px] h-full min-h-0 shrink-0 border-r-2 border-[#090D12] bg-[#17202A] flex-col">

@@ -93,7 +93,7 @@ function DieChipsRow({ roll }: { roll: RollEntry }) {
                 ? `d${chip.sides}: rerolled from ${chip.originalValue}`
                 : `d${chip.sides}${chip.exploded ? ' (exploded)' : ''}${!chip.kept ? ' (dropped)' : ''}`
             }
-            className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 border-2 border-[#090D12] font-mono text-[11px] leading-none ${
+            className={`inline-flex items-center gap-0.5 px-2 py-1 border-2 border-[#090D12] font-mono text-xs leading-none ${
               !chip.kept
                 ? 'bg-[#10161D] text-slate-500 line-through opacity-55'
                 : chip.exploded
@@ -105,7 +105,7 @@ function DieChipsRow({ roll }: { roll: RollEntry }) {
                       : 'bg-[#141D26] text-slate-100 font-bold'
             }`}
           >
-            <span className="text-[9px] text-slate-400 font-normal">d{chip.sides}:</span>
+            <span className="text-[11px] text-slate-400 font-normal">d{chip.sides}:</span>
             <span>{chip.value}</span>
             {chip.exploded && <span className="text-[#F6C445]">!</span>}
             {chip.rerolled && <span className="text-[#38BDF8]">↻</span>}
@@ -261,13 +261,13 @@ export function RollLogPanel({
                     aria-label="Hidden GM Roll"
                   />
                 )}
-                <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 bg-[#11171E] border border-[#090D12] text-[#38BDF8] truncate max-w-[140px]">
+                <span className="font-mono text-[11px] font-bold px-1.5 py-0.5 bg-[#11171E] border border-[#090D12] text-[#38BDF8] truncate max-w-[140px]">
                   {roll.rollerName || 'Player'}
                 </span>
-                <span className="font-display text-[11px] font-bold text-white truncate">
+                <span className="font-display text-xs font-bold text-white truncate">
                   {roll.characterName}
                 </span>
-                <span className="font-mono text-[10px] text-slate-400 shrink-0">
+                <span className="font-mono text-[11px] text-slate-400 shrink-0">
                   · {timeStr}
                 </span>
               </div>
@@ -280,14 +280,14 @@ export function RollLogPanel({
                     style={{ backgroundColor: typeStyle.hex }}
                   />
                 )}
-                <span className="font-mono text-[10px] font-bold text-[#F6C445] uppercase">
+                <span className="font-mono text-[11px] font-bold text-[#F6C445] uppercase">
                   [{categoryLabel}]
                 </span>
-                <span className="text-xs font-semibold text-slate-100 break-words">
+                <span className="text-xs sm:text-sm font-semibold text-slate-100 break-words">
                   {roll.label}
                 </span>
                 {roll.rollMode !== 'normal' && (
-                  <span className="font-mono text-[10px] font-bold text-[#38D46A] uppercase">
+                  <span className="font-mono text-[11px] font-bold text-[#38D46A] uppercase">
                     ({roll.rollMode === 'advantage' ? 'ADV' : 'DIS'})
                   </span>
                 )}
@@ -311,12 +311,12 @@ export function RollLogPanel({
           <DieChipsRow roll={roll} />
         </div>
 
-        <div className="mt-2.5 pt-1.5 border-t-2 border-[#090D12] flex items-center justify-between gap-2 text-[11px] font-mono text-slate-300">
+        <div className="mt-2.5 pt-2 border-t-2 border-[#090D12] flex items-center justify-between gap-2 text-xs font-mono text-slate-300">
           <span className="break-all leading-snug">{roll.breakdown}</span>
           <div className="flex items-center gap-1.5 shrink-0">
             {roll.isCrit && <span className="text-[#38D46A] font-bold">CRIT</span>}
             {roll.isFumble && <span className="text-[#F04848] font-bold">NAT1</span>}
-            <span className="text-[9px] text-slate-400">
+            <span className="text-[11px] text-slate-400">
               {roll.visibility === 'hidden' ? 'GM' : 'ALL'}
             </span>
             <button
@@ -324,9 +324,9 @@ export function RollLogPanel({
               onClick={() => handleRerollEntry(roll)}
               title="Re-roll formula ini"
               aria-label={`Re-roll ${roll.label}`}
-              className="gba-btn p-1 bg-[#131A22] hover:bg-[#232F3E] text-slate-300 hover:text-[#F6C445] cursor-pointer"
+              className="gba-btn w-7 h-7 inline-flex items-center justify-center bg-[#131A22] hover:bg-[#232F3E] text-slate-300 hover:text-[#F6C445] cursor-pointer"
             >
-              <RotateCcw className="w-3 h-3" />
+              <RotateCcw className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -339,15 +339,15 @@ export function RollLogPanel({
   /* ------------------------------------------------------------------ */
   if (isFullWidth) {
     return (
-      <main className="flex-1 overflow-y-auto p-3.5 sm:p-4 lg:p-6 space-y-4 gba-canvas-bg">
+      <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 space-y-3.5 sm:space-y-4 gba-canvas-bg">
         {/* Top WitchDice Roller & Controls Panel */}
         <section className="gba-panel p-3.5 sm:p-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <h1 className="font-display text-sm sm:text-base font-bold text-white uppercase">
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
+              <h1 className="font-display text-base sm:text-lg font-bold text-white tracking-tight">
                 History Roll Room ({rollLog.length})
               </h1>
-              <span className="font-mono text-[10px] px-2 py-0.5 bg-[#131A22] border border-[#090D12] text-[#F6C445]">
+              <span className="font-mono text-[11px] px-2 py-0.5 bg-[#131A22] border border-[#090D12] text-[#F6C445]">
                 {obrState.isAvailable
                   ? `Room · ${obrState.partyCount} Player`
                   : 'Local Preview'}
@@ -358,7 +358,7 @@ export function RollLogPanel({
               <button
                 type="button"
                 onClick={() => setShowControlsInFull((v) => !v)}
-                className="gba-btn inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-200 bg-[#131A22] hover:bg-[#232F3E] cursor-pointer"
+                className="gba-btn inline-flex items-center gap-1.5 px-3 min-h-[36px] text-xs font-medium text-slate-200 bg-[#131A22] hover:bg-[#232F3E] cursor-pointer"
               >
                 <Dices className="w-3.5 h-3.5 text-[#F6C445]" />
                 <span>Dice Tray</span>
@@ -373,7 +373,7 @@ export function RollLogPanel({
                 <button
                   type="button"
                   onClick={clearRollLog}
-                  className="gba-btn inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-slate-300 hover:text-[#F04848] bg-[#131A22] hover:bg-[#4A1922] cursor-pointer"
+                  className="gba-btn inline-flex items-center gap-1.5 px-3 min-h-[36px] text-xs font-medium text-slate-300 hover:text-[#F04848] bg-[#131A22] hover:bg-[#4A1922] cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Clear</span>
@@ -383,7 +383,7 @@ export function RollLogPanel({
           </div>
 
           {showControlsInFull && (
-            <div className="pt-2 border-t-2 border-[#090D12] space-y-3">
+            <div className="pt-2.5 border-t-2 border-[#090D12] space-y-3">
               {/* Row 1: Roll Mode + Visibility + Engine */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div className="gba-well grid grid-cols-3 gap-1 p-1">
@@ -398,7 +398,7 @@ export function RollLogPanel({
                       key={opt.id}
                       type="button"
                       onClick={() => setRollMode(opt.id)}
-                      className={`py-1 text-xs font-semibold cursor-pointer ${
+                      className={`min-h-[34px] text-xs font-semibold cursor-pointer ${
                         rollMode === opt.id
                           ? opt.id === 'advantage'
                             ? 'bg-[#267347] text-white'
@@ -417,7 +417,7 @@ export function RollLogPanel({
                   <button
                     type="button"
                     onClick={() => setRollVisibility('visible')}
-                    className={`inline-flex items-center justify-center gap-1.5 py-1 text-xs font-semibold cursor-pointer ${
+                    className={`inline-flex items-center justify-center gap-1.5 min-h-[34px] text-xs font-semibold cursor-pointer ${
                       rollVisibility === 'visible'
                         ? 'bg-[#267347] text-white'
                         : 'text-slate-400 hover:text-slate-200'
@@ -429,7 +429,7 @@ export function RollLogPanel({
                   <button
                     type="button"
                     onClick={() => setRollVisibility('hidden')}
-                    className={`inline-flex items-center justify-center gap-1.5 py-1 text-xs font-semibold cursor-pointer ${
+                    className={`inline-flex items-center justify-center gap-1.5 min-h-[34px] text-xs font-semibold cursor-pointer ${
                       rollVisibility === 'hidden'
                         ? 'bg-[#5B328A] text-white'
                         : 'text-slate-400 hover:text-slate-200'
@@ -446,7 +446,7 @@ export function RollLogPanel({
                     setDiceIntegrationMode(e.target.value as 'internal' | 'obr-dice-plus')
                   }
                   aria-label="Dice Integration Mode"
-                  className="gba-well px-2.5 py-1.5 text-slate-100 text-xs"
+                  className="gba-well px-2.5 min-h-[42px] sm:min-h-[34px] text-slate-100 text-xs"
                 >
                   <option value="internal">WitchDice Engine + OBR Sync</option>
                   <option value="obr-dice-plus">WitchDice + Dice+ Broadcast</option>
@@ -454,14 +454,14 @@ export function RollLogPanel({
               </div>
 
               {/* Row 2: Quick Die Tray (WitchDice style) + Formula Presets */}
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-1.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="grid grid-cols-7 sm:flex sm:flex-wrap items-center gap-1.5">
                   {QUICK_DICE.map((die) => (
                     <button
                       key={die.label}
                       type="button"
                       onClick={() => handleQuickDieRoll(die.expr, die.label)}
-                      className="gba-btn px-2.5 py-1 font-mono text-xs font-bold text-[#F6C445] bg-[#131A22] hover:bg-[#232F3E] cursor-pointer"
+                      className="gba-btn px-2 sm:px-3 min-h-[36px] font-mono text-xs font-bold text-[#F6C445] bg-[#131A22] hover:bg-[#232F3E] cursor-pointer text-center"
                       title={`Roll ${die.expr}`}
                     >
                       {die.label}
@@ -469,7 +469,7 @@ export function RollLogPanel({
                   ))}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-1">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {WITCHDICE_PRESETS.map((preset) => (
                     <button
                       key={preset.label}
@@ -479,7 +479,7 @@ export function RollLogPanel({
                         setCustomError(null);
                       }}
                       title={preset.title}
-                      className="px-2 py-0.5 font-mono text-[10px] text-slate-300 hover:text-white bg-[#10161D] border border-[#090D12] cursor-pointer"
+                      className="px-2.5 py-1 font-mono text-[11px] text-slate-300 hover:text-white bg-[#10161D] border border-[#090D12] cursor-pointer"
                     >
                       {preset.label}
                     </button>
@@ -498,9 +498,9 @@ export function RollLogPanel({
                   onChange={(e) => setCustomLabel(e.target.value)}
                   placeholder="Keterangan cek (misal: Perception / Capture)"
                   aria-label="Roll check description"
-                  className="gba-well sm:col-span-5 px-2.5 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none"
+                  className="gba-well sm:col-span-5 px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none"
                 />
-                <div className="sm:col-span-7 flex items-center gap-1.5">
+                <div className="sm:col-span-7 flex items-center gap-2">
                   <input
                     type="text"
                     value={customExpr}
@@ -510,13 +510,13 @@ export function RollLogPanel({
                     }}
                     placeholder="1d20 + 5, 4d6kh3, 2d6!, 2d8r1, d%"
                     aria-label="Custom dice formula"
-                    className="gba-well flex-1 px-2.5 py-1.5 text-xs font-mono text-white focus:outline-none"
+                    className="gba-well flex-1 px-3 py-2 text-xs font-mono text-white focus:outline-none"
                   />
                   <button
                     type="submit"
-                    className="gba-btn inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#D62839] hover:bg-[#E63946] cursor-pointer shrink-0"
+                    className="gba-btn inline-flex items-center gap-1.5 px-3.5 min-h-[36px] text-xs font-semibold text-white bg-[#D62839] hover:bg-[#E63946] cursor-pointer shrink-0"
                   >
-                    <Dices className="w-3.5 h-3.5" />
+                    <Dices className="w-4 h-4" />
                     <span>Roll</span>
                   </button>
                 </div>
@@ -530,17 +530,17 @@ export function RollLogPanel({
 
         {/* Player & Category Filters */}
         <section className="gba-panel p-3 space-y-2.5">
-          <div className="flex flex-wrap items-center gap-2 justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 justify-between">
             {/* Player Filter Pills */}
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-300 mr-1">
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-slate-300 mr-1">
                 <Users className="w-3.5 h-3.5 text-[#38BDF8]" />
                 Player:
               </span>
               <button
                 type="button"
                 onClick={() => setSelectedPlayer('all')}
-                className={`gba-btn px-2 py-0.5 text-[11px] font-mono cursor-pointer ${
+                className={`gba-btn px-2.5 min-h-[32px] text-xs font-mono cursor-pointer ${
                   selectedPlayer === 'all'
                     ? 'bg-[#F6C445] text-[#090D12] font-bold'
                     : 'bg-[#131A22] text-slate-300 hover:text-white'
@@ -553,7 +553,7 @@ export function RollLogPanel({
                   key={pf.name}
                   type="button"
                   onClick={() => setSelectedPlayer(pf.name)}
-                  className={`gba-btn px-2 py-0.5 text-[11px] font-mono cursor-pointer ${
+                  className={`gba-btn px-2.5 min-h-[32px] text-xs font-mono cursor-pointer ${
                     selectedPlayer === pf.name
                       ? 'bg-[#38BDF8] text-[#090D12] font-bold'
                       : 'bg-[#131A22] text-slate-300 hover:text-white'
@@ -565,16 +565,16 @@ export function RollLogPanel({
             </div>
 
             {/* Category + Search */}
-            <div className="flex flex-wrap items-center gap-1.5 w-full sm:w-auto">
-              <div className="relative flex items-center">
-                <Filter className="w-3 h-3 text-slate-400 absolute left-2 pointer-events-none" />
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="relative flex items-center shrink-0">
+                <Filter className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none" />
                 <select
                   value={selectedCategory}
                   onChange={(e) =>
                     setSelectedCategory(e.target.value as 'all' | RollCategory)
                   }
                   aria-label="Filter roll category"
-                  className="gba-well pl-6 pr-2 py-1 text-xs text-slate-100"
+                  className="gba-well pl-7 pr-2.5 py-1.5 text-xs text-slate-100"
                 >
                   {CATEGORY_FILTER_OPTIONS.map((opt) => (
                     <option key={opt.id} value={opt.id}>
@@ -585,14 +585,14 @@ export function RollLogPanel({
               </div>
 
               <div className="relative flex-1 sm:w-44">
-                <Search className="w-3 h-3 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Cari nama / cek..."
                   aria-label="Search roll history"
-                  className="gba-well w-full pl-6 pr-2 py-1 text-xs text-white placeholder:text-slate-500 focus:outline-none"
+                  className="gba-well w-full pl-8 pr-2.5 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none"
                 />
               </div>
             </div>
@@ -732,7 +732,7 @@ export function RollLogPanel({
               key={die.label}
               type="button"
               onClick={() => handleQuickDieRoll(die.expr, die.label)}
-              className="gba-btn flex-1 py-1 font-mono text-[10px] font-bold text-[#F6C445] bg-[#131A22] hover:bg-[#232F3E] cursor-pointer"
+              className="gba-btn flex-1 min-h-[32px] font-mono text-[11px] font-bold text-[#F6C445] bg-[#131A22] hover:bg-[#232F3E] cursor-pointer"
               title={`Roll ${die.expr}`}
             >
               {die.label}
