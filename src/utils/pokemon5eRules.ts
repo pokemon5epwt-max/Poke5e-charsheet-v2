@@ -1,6 +1,7 @@
 import {
   AbilityKey,
   AbilityScores,
+  ActiveCharacter,
   DamageModifierType,
   Move,
   PartyWorkspace,
@@ -374,6 +375,66 @@ export function createId(prefix = 'id'): string {
     return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
   }
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+export function getPoke5eSpeciesSlug(species: string): string {
+  const cleaned = species
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/♀/g, '-f')
+    .replace(/♂/g, '-m')
+    .replace(/['’.]/g, '')
+    .replace(/[:_]+/g, ' ')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return cleaned;
+}
+
+export function getPoke5eSpeciesArtworkUrl(
+  species: string,
+  isShiny = false
+): string | undefined {
+  const slug = getPoke5eSpeciesSlug(species);
+  if (!slug || slug === 'unknown' || slug === 'imported-pokemon') return undefined;
+  return `https://poke5e.app/assets/pokemon/${slug}/${isShiny ? 'main-shiny' : 'main'}.png`;
+}
+
+export function resolveCharacterAvatarUrl(
+  character: Pick<ActiveCharacter, 'kind' | 'avatarUrl'> & {
+    species?: string;
+    isShiny?: boolean;
+  }
+): string | undefined {
+  const custom = character.avatarUrl?.trim();
+  if (custom) return custom;
+  if (character.kind === 'pokemon' && character.species) {
+    return getPoke5eSpeciesArtworkUrl(character.species, Boolean(character.isShiny));
+  }
+  return undefined;
+}
+
+export function parseHpText(hpText?: string): {
+  hpCurrent?: number;
+  hpMax?: number;
+} {
+  if (!hpText) return {};
+  const trimmed = hpText.trim();
+  const slashMatch = trimmed.match(/^(-?\d+)\s*\/\s*(\d+)$/);
+  if (slashMatch) {
+    const hpCurrent = Math.max(0, parseInt(slashMatch[1], 10));
+    const hpMax = Math.max(1, parseInt(slashMatch[2], 10));
+    return { hpCurrent, hpMax };
+  }
+  const singleMatch = trimmed.match(/^(\d+)$/);
+  if (singleMatch) {
+    const val = Math.max(1, parseInt(singleMatch[1], 10));
+    return { hpCurrent: val, hpMax: val };
+  }
+  return {};
 }
 
 export const TRAINER_ITEM_CATEGORIES: Array<{
@@ -765,6 +826,7 @@ export function createStarterParty(): PartyWorkspace {
         skills: pikachuSkills,
         heldItem: 'Light Ball',
         statusCondition: 'Healthy',
+        avatarUrl: 'https://poke5e.app/assets/pokemon/pikachu/main.png',
         notes: 'High initiative scout. Uses Quick Attack to close distance before Thunderbolt.',
         moves: [
           {
@@ -852,6 +914,7 @@ export function createStarterParty(): PartyWorkspace {
         skills: charmeleonSkills,
         heldItem: 'Charcoal',
         statusCondition: 'Healthy',
+        avatarUrl: 'https://poke5e.app/assets/pokemon/charmeleon/main.png',
         notes: 'Frontline striker.',
         moves: [
           {

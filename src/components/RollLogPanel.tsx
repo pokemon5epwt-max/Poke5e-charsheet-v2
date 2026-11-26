@@ -24,6 +24,7 @@ interface RollLogPanelProps {
   onCloseMobile?: () => void;
   onExpandTab?: () => void;
   isFullWidth?: boolean;
+  isDockedWithHud?: boolean;
 }
 
 const QUICK_DICE = [
@@ -120,6 +121,7 @@ export function RollLogPanel({
   onCloseMobile,
   onExpandTab,
   isFullWidth = false,
+  isDockedWithHud = false,
 }: RollLogPanelProps) {
   const rollMode = useCharacterStore((s) => s.rollMode);
   const rollVisibility = useCharacterStore((s) => s.rollVisibility);
@@ -627,7 +629,13 @@ export function RollLogPanel({
   /* DOCKED RIGHT SIDEBAR MODE (xl+ when viewing Sheet or Initiative)   */
   /* ------------------------------------------------------------------ */
   return (
-    <aside className="w-full xl:w-[340px] border-l-2 border-[#090D12] shrink-0 bg-[#17202A] flex flex-col h-full min-h-0">
+    <aside
+      className={
+        isDockedWithHud
+          ? 'w-full flex-1 min-h-0 bg-[#17202A] flex flex-col'
+          : 'w-full xl:w-[340px] border-l-2 border-[#090D12] shrink-0 bg-[#17202A] flex flex-col h-full min-h-0'
+      }
+    >
       {/* Header & Roll Controls */}
       <div className="p-3.5 border-b-2 border-[#090D12] space-y-2.5 shrink-0">
         <div className="flex items-center justify-between gap-2">

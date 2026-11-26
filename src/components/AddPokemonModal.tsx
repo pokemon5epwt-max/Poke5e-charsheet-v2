@@ -7,6 +7,7 @@ import {
   createEmptySaves,
   createEmptySkills,
   createId,
+  getPoke5eSpeciesArtworkUrl,
 } from '../utils/pokemon5eRules';
 
 interface AddPokemonModalProps {
@@ -73,6 +74,7 @@ export function AddPokemonModal({ onClose }: AddPokemonModalProps) {
       ],
       heldItem: '',
       statusCondition: 'Healthy',
+      avatarUrl: getPoke5eSpeciesArtworkUrl(cleanSpecies),
       notes: '',
     });
 

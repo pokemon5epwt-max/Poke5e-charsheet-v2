@@ -1,8 +1,9 @@
-import { Minus, Plus, Shield, Sparkles, Trash2, User } from 'lucide-react';
+import { Minus, Plus, Shield, Sparkles, Trash2 } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { useCharacterStore } from '../store/useCharacterStore';
-import { TYPE_STYLES } from '../utils/pokemon5eRules';
-import { LeagueBadgeIcon, PixelCursor, PokeballIcon } from './PokemonAccessories';
+import { TYPE_STYLES, resolveCharacterAvatarUrl } from '../utils/pokemon5eRules';
+import { CharacterAvatar } from './CharacterAvatar';
+import { LeagueBadgeIcon, PixelCursor } from './PokemonAccessories';
 
 interface PartySidebarProps {
   onOpenAddPokemon: () => void;
@@ -75,11 +76,16 @@ export function PartySidebar({
             >
               <div className="flex items-center justify-between gap-1.5">
                 <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white truncate">
-                  {activeCharacterId === 'trainer' ? (
+                  {activeCharacterId === 'trainer' && (
                     <PixelCursor className="w-2.5 h-2.5 text-[#F6C445]" />
-                  ) : (
-                    <User className="w-3.5 h-3.5 text-[#E63946] shrink-0" />
                   )}
+                  <CharacterAvatar
+                    src={resolveCharacterAvatarUrl(party.trainer)}
+                    name={party.trainer.name}
+                    accentHex="#E63946"
+                    className="w-4 h-4 border border-[#090D12] rounded-xs shrink-0"
+                    fallbackTextClassName="text-[8px]"
+                  />
                   <span className="truncate">{party.trainer.name}</span>
                 </span>
               </div>
@@ -124,9 +130,14 @@ export function PartySidebar({
                   }`}
                 >
                   <div className="flex items-center gap-1.5">
-                    <PokeballIcon
-                      variant={mon.hpCurrent <= 0 ? 'fainted' : 'poke'}
-                      className="w-3.5 h-3.5 shrink-0"
+                    <CharacterAvatar
+                      src={resolveCharacterAvatarUrl(mon)}
+                      name={mon.name}
+                      isPokemon
+                      isFainted={mon.hpCurrent <= 0}
+                      accentHex={typeStyle.hex}
+                      className="w-4 h-4 border border-[#090D12] rounded-xs shrink-0"
+                      fallbackTextClassName="text-[8px]"
                     />
                     <span className="text-xs font-semibold text-white truncate">
                       {mon.name}
@@ -208,20 +219,27 @@ export function PartySidebar({
               }`}
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    {activeCharacterId === 'trainer' ? (
-                      <PixelCursor className="w-2.5 h-2.5 text-[#F6C445]" />
-                    ) : (
-                      <User className="w-3.5 h-3.5 text-[#E63946] shrink-0" />
-                    )}
-                    <span className="font-display font-bold text-xs text-white truncate">
-                      {party.trainer.name}
-                    </span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <CharacterAvatar
+                    src={resolveCharacterAvatarUrl(party.trainer)}
+                    name={party.trainer.name}
+                    accentHex="#E63946"
+                    className="w-8 h-8 border-2 border-[#090D12] rounded-xs shrink-0"
+                    fallbackTextClassName="text-[10px]"
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      {activeCharacterId === 'trainer' && (
+                        <PixelCursor className="w-2.5 h-2.5 text-[#F6C445]" />
+                      )}
+                      <span className="font-display font-bold text-xs text-white truncate">
+                        {party.trainer.name}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-0.5 truncate">
+                      {party.trainer.trainerClass} · AC {party.trainer.ac}
+                    </p>
                   </div>
-                  <p className="text-xs text-slate-300 mt-0.5 truncate">
-                    {party.trainer.trainerClass} · AC {party.trainer.ac}
-                  </p>
                 </div>
                 <span className="font-mono text-[11px] text-white shrink-0">
                   {party.trainer.hpCurrent}/{party.trainer.hpMax}
@@ -339,23 +357,30 @@ export function PartySidebar({
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            {isActive && (
-                              <PixelCursor className="w-2.5 h-2.5 text-[#F6C445]" />
-                            )}
-                            <PokeballIcon
-                              variant={mon.hpCurrent <= 0 ? 'fainted' : 'poke'}
-                              className="w-4 h-4 shrink-0"
-                            />
-                            <span className="font-display font-bold text-xs text-white truncate">
-                              {mon.name}
-                            </span>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <CharacterAvatar
+                            src={resolveCharacterAvatarUrl(mon)}
+                            name={mon.name}
+                            isPokemon
+                            isFainted={mon.hpCurrent <= 0}
+                            accentHex={typeStyle.hex}
+                            className="w-8 h-8 border-2 border-[#090D12] rounded-xs shrink-0"
+                            fallbackTextClassName="text-[10px]"
+                          />
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              {isActive && (
+                                <PixelCursor className="w-2.5 h-2.5 text-[#F6C445]" />
+                              )}
+                              <span className="font-display font-bold text-xs text-white truncate">
+                                {mon.name}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-300 mt-0.5 truncate">
+                              {mon.species !== mon.name ? `${mon.species} · ` : ''}Lv {mon.level} ·{' '}
+                              {mon.types.join('/')}
+                            </p>
                           </div>
-                          <p className="text-xs text-slate-300 mt-0.5 truncate">
-                            {mon.species !== mon.name ? `${mon.species} · ` : ''}Lv {mon.level} ·{' '}
-                            {mon.types.join('/')}
-                          </p>
                         </div>
 
                         <span className="font-mono text-[11px] text-white shrink-0">

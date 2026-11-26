@@ -106,3 +106,21 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #465b71;
 }
+
+/* Transparent background for OBR Floating Initiative HUD (?view=hud) */
+html.hud-mode,
+html.hud-mode body {
+  background: transparent !important;
+  background-color: transparent !important;
+  overflow: hidden;
+}
+
+/* Tactical slanted portrait card & counter-skew content */
+.hud-slanted {
+  transform: skewX(-12deg);
+}
+
+.hud-unskew {
+  transform: skewX(12deg);
+}
+

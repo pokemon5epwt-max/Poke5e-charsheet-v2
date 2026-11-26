@@ -1,20 +1,35 @@
-import { History, ListOrdered, ScrollText, X } from 'lucide-react';
+import { CheckCircle2, History, ListOrdered, ScrollText, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { AddPokemonModal } from './components/AddPokemonModal';
 import { CharacterSheet } from './components/CharacterSheet';
 import { ImportPoke5eModal } from './components/ImportPoke5eModal';
+import { InitiativeHudStrip } from './components/InitiativeHudStrip';
 import { InitiativeTable } from './components/InitiativeTable';
 import { PartySidebar } from './components/PartySidebar';
 import { PixelCursor } from './components/PokemonAccessories';
 import { RollLogPanel } from './components/RollLogPanel';
 import { TopBar } from './components/TopBar';
-import { useCharacterStore } from './store/useCharacterStore';
-import { initObrBridge } from './utils/obrBridge';
+import {
+  canControlInitiativeEntry,
+  useCharacterStore,
+} from './store/useCharacterStore';
+import {
+  closeFloatingInitiativeHud,
+  initObrBridge,
+  openFloatingInitiativeHud,
+} from './utils/obrBridge';
 import { getRollCategoryLabel } from './utils/pokemon5eRules';
 import { loadActiveTab, saveActiveTab } from './utils/safeStorage';
 
+function detectHudViewMode(): boolean {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('view') === 'hud';
+}
+
 export default function App() {
+  const isHudView = detectHudViewMode();
   const party = useCharacterStore((s) => s.party);
+  const obrState = useCharacterStore((s) => s.obrState);
   const rollLog = useCharacterStore((s) => s.rollLog);
   const initiativeList = useCharacterStore((s) => s.initiativeList);
   const initiativeTurnIndex = useCharacterStore((s) => s.initiativeTurnIndex);
@@ -23,6 +38,7 @@ export default function App() {
   const appendRemoteRoll = useCharacterStore((s) => s.appendRemoteRoll);
   const mergeRoomRolls = useCharacterStore((s) => s.mergeRoomRolls);
   const syncRemoteInitiative = useCharacterStore((s) => s.syncRemoteInitiative);
+  const endCurrentTurn = useCharacterStore((s) => s.endCurrentTurn);
 
   const [activeTab, setActiveTab] = useState<'sheet' | 'initiative' | 'history'>(() =>
     loadActiveTab()
@@ -31,20 +47,33 @@ export default function App() {
   const [showAddPokemonModal, setShowAddPokemonModal] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [dismissedRollId, setDismissedRollId] = useState<string | null>(null);
+  const [isFloatingHudOpen, setIsFloatingHudOpen] = useState(false);
 
   const latestRollId = rollLog[0]?.id;
   const prevLatestIdRef = useRef<string | undefined>(latestRollId);
 
+  // Mark HTML root transparent when running inside OBR Floating HUD popover (?view=hud)
+  useEffect(() => {
+    if (!isHudView) return;
+    document.documentElement.classList.add('hud-mode');
+    return () => {
+      document.documentElement.classList.remove('hud-mode');
+    };
+  }, [isHudView]);
+
   // Initialize Owlbear Rodeo SDK bridge (broadcast + persistent room metadata)
   useEffect(() => {
-    const cleanup = initObrBridge({
-      onObrStateChange: setObrState,
-      onRemoteRoll: appendRemoteRoll,
-      onSyncRoomRolls: mergeRoomRolls,
-      onSyncInitiative: syncRemoteInitiative,
-    });
+    const cleanup = initObrBridge(
+      {
+        onObrStateChange: setObrState,
+        onRemoteRoll: appendRemoteRoll,
+        onSyncRoomRolls: mergeRoomRolls,
+        onSyncInitiative: syncRemoteInitiative,
+      },
+      { skipActionResize: isHudView }
+    );
     return cleanup;
-  }, [setObrState, appendRemoteRoll, mergeRoomRolls, syncRemoteInitiative]);
+  }, [isHudView, setObrState, appendRemoteRoll, mergeRoomRolls, syncRemoteInitiative]);
 
   // Track unread rolls when History tab is not currently open on < xl viewports
   useEffect(() => {
@@ -84,8 +113,25 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  const handleToggleFloatingHud = async () => {
+    if (isFloatingHudOpen) {
+      await closeFloatingInitiativeHud();
+      setIsFloatingHudOpen(false);
+    } else {
+      const opened = await openFloatingInitiativeHud(initiativeList.length);
+      if (opened) {
+        setIsFloatingHudOpen(true);
+      }
+    }
+  };
+
+  if (isHudView) {
+    return <InitiativeHudStrip variant="floating" />;
+  }
+
   const latestRoll = rollLog[0];
   const currentTurn = initiativeList[initiativeTurnIndex];
+  const canEndCurrentTurn = canControlInitiativeEntry(currentTurn, obrState);
 
   return (
     <div className="h-[100dvh] w-full bg-[#141A21] text-[#EDF2F7] flex flex-col overflow-hidden">
@@ -94,6 +140,8 @@ export default function App() {
         onExportJson={handleExportJson}
         onToggleMobileLog={handleOpenHistoryFromTopBar}
         unreadLogCount={unreadCount}
+        isFloatingHudOpen={isFloatingHudOpen}
+        onToggleFloatingHud={() => void handleToggleFloatingHud()}
       />
 
       {/* Tablet / OBR Popover / Desktop Mode Switcher (hidden on mobile; mobile uses Bottom Tab Bar) */}
@@ -172,27 +220,41 @@ export default function App() {
           </button>
         </div>
 
-        <button
-          type="button"
-          onClick={() => handleSelectTab('initiative')}
-          title={
-            currentTurn
-              ? `Round ${initiativeRound} · Active Turn: ${currentTurn.characterName}`
-              : `Round ${initiativeRound} · Open Initiative Tracker`
-          }
-          className="gba-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-[#131A22] hover:bg-[#232F3E] text-[#F6C445] max-w-[240px] cursor-pointer shrink-0"
-        >
-          <span className="font-mono tabular-nums font-bold text-[#090D12] bg-[#F6C445] px-1.5 py-0.5 leading-none rounded-sm">
-            R{initiativeRound}
-          </span>
-          {currentTurn ? (
-            <span className="truncate font-medium text-slate-100">
-              ▶ {currentTurn.characterName}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => handleSelectTab('initiative')}
+            title={
+              currentTurn
+                ? `Round ${initiativeRound} · Active Turn: ${currentTurn.characterName}`
+                : `Round ${initiativeRound} · Open Initiative Tracker`
+            }
+            className="gba-btn inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-[#131A22] hover:bg-[#232F3E] text-[#F6C445] max-w-[200px] cursor-pointer shrink-0"
+          >
+            <span className="font-mono tabular-nums font-bold text-[#090D12] bg-[#F6C445] px-1.5 py-0.5 leading-none rounded-sm">
+              R{initiativeRound}
             </span>
-          ) : (
-            <span className="text-slate-300 font-medium">Round {initiativeRound}</span>
+            {currentTurn ? (
+              <span className="truncate font-medium text-slate-100">
+                ▶ {currentTurn.characterName}
+              </span>
+            ) : (
+              <span className="text-slate-300 font-medium">Round {initiativeRound}</span>
+            )}
+          </button>
+
+          {currentTurn && canEndCurrentTurn && (
+            <button
+              type="button"
+              onClick={endCurrentTurn}
+              title={`End Turn for ${currentTurn.characterName}`}
+              className="gba-btn xl:hidden inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold text-white bg-[#D62839] hover:bg-[#E63946] cursor-pointer whitespace-nowrap shrink-0"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>End Turn</span>
+            </button>
           )}
-        </button>
+        </div>
       </div>
 
       {/* Dismissible Latest Roll Banner (< xl) */}
@@ -251,13 +313,27 @@ export default function App() {
         {activeTab === 'sheet' && (
           <CharacterSheet onOpenImport={() => setShowImportModal(true)} />
         )}
-        {activeTab === 'initiative' && <InitiativeTable />}
+        {activeTab === 'initiative' && (
+          <InitiativeTable
+            isFloatingHudOpen={isFloatingHudOpen}
+            onToggleFloatingHud={() => void handleToggleFloatingHud()}
+          />
+        )}
         {activeTab === 'history' && <RollLogPanel isFullWidth />}
 
-        {/* Desktop Docked Roll Log (hidden when dedicated full History tab is open) */}
+        {/* Desktop Right Dock: Slanted Portrait Initiative HUD + Roll Log */}
         {activeTab !== 'history' && (
-          <div className="hidden xl:flex h-full">
-            <RollLogPanel onExpandTab={() => handleSelectTab('history')} />
+          <div className="hidden xl:flex flex-col w-[340px] border-l-2 border-[#090D12] shrink-0 bg-[#17202A] h-full min-h-0">
+            <InitiativeHudStrip
+              variant="docked"
+              onOpenFullInitiative={() => handleSelectTab('initiative')}
+              isFloatingHudOpen={isFloatingHudOpen}
+              onToggleFloatingHud={() => void handleToggleFloatingHud()}
+            />
+            <RollLogPanel
+              isDockedWithHud
+              onExpandTab={() => handleSelectTab('history')}
+            />
           </div>
         )}
       </div>

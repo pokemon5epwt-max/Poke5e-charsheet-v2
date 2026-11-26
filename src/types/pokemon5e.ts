@@ -126,6 +126,8 @@ export interface PokemonSheet {
   heldItem: string;
   statusCondition: string;
   notes: string;
+  avatarUrl?: string;
+  isShiny?: boolean;
 }
 
 export type TrainerItemCategory =
@@ -177,6 +179,7 @@ export interface TrainerSheet {
   badges: number;
   trainerPaths: string;
   notes: string;
+  avatarUrl?: string;
   poke5eMeta?: {
     trainerId: string;
     readKey?: string;
@@ -252,7 +255,11 @@ export interface InitiativeEntry {
   breakdown: string;
   visibility: RollVisibility;
   hpText?: string;
+  hpCurrent?: number;
+  hpMax?: number;
   ac?: number;
+  avatarUrl?: string;
+  hasActed?: boolean;
   isNpc?: boolean;
   updatedAt: string;
 }

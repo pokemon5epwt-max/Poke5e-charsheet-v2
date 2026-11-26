@@ -11,12 +11,74 @@ const ROLL_CHANNEL = 'com.pokemon5e.character-sheet/rolls';
 const DICE_PLUS_CHANNEL = 'dice-plus/roll-request';
 const ROOM_ROLLS_METADATA_KEY = 'com.pokemon5e.character-sheet/shared-rolls';
 const ROOM_INITIATIVE_METADATA_KEY = 'com.pokemon5e.character-sheet/initiative-state';
+export const HUD_POPOVER_ID = 'com.pokemon5e.character-sheet/initiative-hud';
 
 export interface ObrBridgeCallbacks {
   onObrStateChange: (state: ObrState) => void;
   onRemoteRoll: (roll: RollEntry) => void;
   onSyncRoomRolls: (rolls: RollEntry[]) => void;
   onSyncInitiative: (state: InitiativeSyncState) => void;
+}
+
+export interface ObrBridgeOptions {
+  skipActionResize?: boolean;
+}
+
+export function computeFloatingHudWidth(
+  combatantCount: number,
+  isCollapsed: boolean
+): number {
+  if (isCollapsed) return 96;
+  const visibleSlots = Math.max(1, Math.min(8, combatantCount || 1));
+  return Math.min(720, Math.max(300, 96 + visibleSlots * 74));
+}
+
+export async function openFloatingInitiativeHud(
+  combatantCount = 1
+): Promise<boolean> {
+  if (!OBR.isAvailable || !OBR.isReady) return false;
+  try {
+    await OBR.popover.open({
+      id: HUD_POPOVER_ID,
+      url: '/?view=hud',
+      width: computeFloatingHudWidth(combatantCount, false),
+      height: 152,
+      anchorReference: 'POSITION',
+      anchorPosition: { left: 460, top: 18 },
+      anchorOrigin: { horizontal: 'LEFT', vertical: 'TOP' },
+      transformOrigin: { horizontal: 'LEFT', vertical: 'TOP' },
+      hidePaper: true,
+      disableClickAway: true,
+      marginThreshold: 8,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function closeFloatingInitiativeHud(): Promise<void> {
+  if (!OBR.isAvailable || !OBR.isReady) return;
+  try {
+    await OBR.popover.close(HUD_POPOVER_ID);
+  } catch {
+    // Ignore close errors
+  }
+}
+
+export async function resizeFloatingInitiativeHud(
+  width: number,
+  height: number
+): Promise<void> {
+  if (!OBR.isAvailable || !OBR.isReady) return;
+  try {
+    await Promise.all([
+      OBR.popover.setWidth(HUD_POPOVER_ID, Math.round(width)),
+      OBR.popover.setHeight(HUD_POPOVER_ID, Math.round(height)),
+    ]);
+  } catch {
+    // Ignore resize errors
+  }
 }
 
 function extractRoomRolls(metadata: Record<string, unknown>, localPlayerId: string): RollEntry[] {
@@ -77,7 +139,10 @@ function extractRoomInitiative(metadata: Record<string, unknown>): InitiativeSyn
   };
 }
 
-export function initObrBridge(callbacks: ObrBridgeCallbacks): () => void {
+export function initObrBridge(
+  callbacks: ObrBridgeCallbacks,
+  options?: ObrBridgeOptions
+): () => void {
   if (!OBR.isAvailable) {
     callbacks.onObrStateChange({
       isAvailable: false,
@@ -137,9 +202,11 @@ export function initObrBridge(callbacks: ObrBridgeCallbacks): () => void {
 
   OBR.onReady(() => {
     void syncPlayerAndRoom();
-    void OBR.action.setWidth(540);
-    void OBR.action.setHeight(640);
-    void OBR.action.setBadgeText(undefined).catch(() => {});
+    if (!options?.skipActionResize) {
+      void OBR.action.setWidth(540);
+      void OBR.action.setHeight(640);
+      void OBR.action.setBadgeText(undefined).catch(() => {});
+    }
 
     unsubPlayer = OBR.player.onChange((player) => {
       currentState = {

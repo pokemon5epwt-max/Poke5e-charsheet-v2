@@ -1,21 +1,43 @@
 import {
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Clock,
   Dices,
   Lock,
   Minus,
+  Pin,
+  PinOff,
   Plus,
   RotateCcw,
   Trash2,
   X,
 } from 'lucide-react';
 import { useState } from 'react';
-import { selectActiveCharacter, useCharacterStore } from '../store/useCharacterStore';
+import {
+  canControlInitiativeEntry,
+  selectActiveCharacter,
+  useCharacterStore,
+} from '../store/useCharacterStore';
 import { InitiativeEntry } from '../types/pokemon5e';
-import { formatSignedModifier, getAbilityModifier } from '../utils/pokemon5eRules';
+import {
+  formatSignedModifier,
+  getAbilityModifier,
+  getPoke5eSpeciesArtworkUrl,
+  resolveCharacterAvatarUrl,
+} from '../utils/pokemon5eRules';
+import { CharacterAvatar } from './CharacterAvatar';
 import { PixelCursor, PokeballIcon } from './PokemonAccessories';
 
-export function InitiativeTable() {
+interface InitiativeTableProps {
+  isFloatingHudOpen?: boolean;
+  onToggleFloatingHud?: () => void;
+}
+
+export function InitiativeTable({
+  isFloatingHudOpen = false,
+  onToggleFloatingHud,
+}: InitiativeTableProps) {
   const activeChar = useCharacterStore(selectActiveCharacter);
   const party = useCharacterStore((s) => s.party);
   const obrState = useCharacterStore((s) => s.obrState);
@@ -28,6 +50,8 @@ export function InitiativeTable() {
   const updateInitiativeScore = useCharacterStore((s) => s.updateInitiativeScore);
   const removeInitiativeEntry = useCharacterStore((s) => s.removeInitiativeEntry);
   const setInitiativeTurnIndex = useCharacterStore((s) => s.setInitiativeTurnIndex);
+  const endCurrentTurn = useCharacterStore((s) => s.endCurrentTurn);
+  const toggleEntryDone = useCharacterStore((s) => s.toggleEntryDone);
   const nextInitiativeTurn = useCharacterStore((s) => s.nextInitiativeTurn);
   const prevInitiativeTurn = useCharacterStore((s) => s.prevInitiativeTurn);
   const setInitiativeRound = useCharacterStore((s) => s.setInitiativeRound);
@@ -39,6 +63,7 @@ export function InitiativeTable() {
   const [npcInit, setNpcInit] = useState('12');
   const [npcAc, setNpcAc] = useState('');
   const [npcHp, setNpcHp] = useState('');
+  const [npcAvatarUrl, setNpcAvatarUrl] = useState('');
 
   const activeDexMod = getAbilityModifier(activeChar.abilities.dex);
 
@@ -64,30 +89,39 @@ export function InitiativeTable() {
     if (!trimmed) return;
     const parsedInit = parseInt(npcInit, 10);
     const parsedAc = npcAc.trim() ? parseInt(npcAc, 10) : undefined;
+    const autoSpeciesUrl = getPoke5eSpeciesArtworkUrl(
+      trimmed.replace(/^(wild|alpha|boss)\s+/i, '')
+    );
     addManualInitiative({
       name: trimmed,
       initiative: Number.isNaN(parsedInit) ? 10 : parsedInit,
       ac: parsedAc !== undefined && !Number.isNaN(parsedAc) ? parsedAc : undefined,
       hpText: npcHp.trim() || undefined,
+      avatarUrl: npcAvatarUrl.trim() || autoSpeciesUrl,
     });
     setNpcName('');
     setNpcAc('');
     setNpcHp('');
+    setNpcAvatarUrl('');
     setShowAddForm(false);
   };
 
   const resolveLiveVitals = (
     entry: InitiativeEntry
-  ): { hpText?: string; ac?: number } => {
+  ): { hpText?: string; ac?: number; avatarUrl?: string; isPokemon: boolean } => {
     const isLocalOwner =
       !entry.isNpc &&
-      (entry.ownerId === obrState.playerId || entry.ownerId === 'local-player');
+      (entry.ownerId === obrState.playerId ||
+        entry.ownerId === 'local-player' ||
+        !entry.ownerId);
 
     if (isLocalOwner) {
       if (entry.characterId === 'trainer') {
         return {
           hpText: `${party.trainer.hpCurrent}/${party.trainer.hpMax}`,
           ac: party.trainer.ac,
+          avatarUrl: resolveCharacterAvatarUrl(party.trainer) || entry.avatarUrl,
+          isPokemon: false,
         };
       }
       const mon = party.pokemon.find((p) => p.id === entry.characterId);
@@ -95,13 +129,21 @@ export function InitiativeTable() {
         return {
           hpText: `${mon.hpCurrent}/${mon.hpMax}`,
           ac: mon.ac,
+          avatarUrl: resolveCharacterAvatarUrl(mon) || entry.avatarUrl,
+          isPokemon: true,
         };
       }
     }
-    return { hpText: entry.hpText, ac: entry.ac };
+    return {
+      hpText: entry.hpText,
+      ac: entry.ac,
+      avatarUrl: entry.avatarUrl,
+      isPokemon: entry.characterId !== 'trainer',
+    };
   };
 
   const activeTurnEntry = initiativeList[initiativeTurnIndex];
+  const canEndActiveTurn = canControlInitiativeEntry(activeTurnEntry, obrState);
   const formattedRound = String(initiativeRound).padStart(2, '0');
 
   return (
@@ -144,6 +186,30 @@ export function InitiativeTable() {
               <Plus className="w-4 h-4" />
               <span>NPC</span>
             </button>
+
+            {obrState.isAvailable && onToggleFloatingHud && (
+              <button
+                type="button"
+                onClick={onToggleFloatingHud}
+                title={
+                  isFloatingHudOpen
+                    ? 'Tutup Floating HUD di map OBR'
+                    : 'Tampilkan Floating Portrait HUD di atas map OBR'
+                }
+                className={`gba-btn inline-flex items-center justify-center gap-1.5 px-3 min-h-[40px] sm:min-h-[36px] text-xs font-semibold cursor-pointer whitespace-nowrap shrink-0 ${
+                  isFloatingHudOpen
+                    ? 'bg-[#267347] text-white'
+                    : 'bg-[#131A22] hover:bg-[#232F3E] text-[#38BDF8]'
+                }`}
+              >
+                {isFloatingHudOpen ? (
+                  <PinOff className="w-4 h-4" />
+                ) : (
+                  <Pin className="w-4 h-4" />
+                )}
+                <span>{isFloatingHudOpen ? 'HUD On' : 'Float HUD'}</span>
+              </button>
+            )}
 
             {initiativeList.length > 0 && (
               <button
@@ -226,7 +292,24 @@ export function InitiativeTable() {
             )}
 
             {initiativeList.length > 0 && (
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                {canEndActiveTurn ? (
+                  <button
+                    type="button"
+                    onClick={endCurrentTurn}
+                    title="Tandai giliran aktif DONE & lanjut ke combatant berikutnya"
+                    className="gba-btn inline-flex items-center gap-1 px-3 h-9 sm:h-8 text-xs font-bold text-white bg-[#D62839] hover:bg-[#E63946] cursor-pointer whitespace-nowrap"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <span>End Turn</span>
+                  </button>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 h-9 sm:h-8 text-[11px] font-medium text-slate-300 bg-[#131A22] border border-[#090D12] whitespace-nowrap">
+                    <Clock className="w-3.5 h-3.5 text-[#F6C445]" />
+                    <span>Menunggu {activeTurnEntry?.playerName || 'Player'}</span>
+                  </span>
+                )}
+
                 <button
                   type="button"
                   onClick={prevInitiativeTurn}
@@ -241,7 +324,7 @@ export function InitiativeTable() {
                   onClick={nextInitiativeTurn}
                   className="gba-btn inline-flex items-center gap-1 px-3 h-9 sm:h-8 text-xs font-bold text-[#090D12] bg-[#F6C445] hover:bg-[#FBD160] cursor-pointer whitespace-nowrap"
                 >
-                  <span>Next Turn</span>
+                  <span>Next</span>
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
@@ -319,6 +402,19 @@ export function InitiativeTable() {
                 Add
               </button>
             </div>
+
+            <div className="col-span-12">
+              <label className="block text-xs font-medium text-slate-300 mb-1">
+                Avatar URL (opsional — otomatis pakai sprite poke5e.app jika nama Pokémon valid)
+              </label>
+              <input
+                type="url"
+                value={npcAvatarUrl}
+                onChange={(e) => setNpcAvatarUrl(e.target.value)}
+                placeholder="https://poke5e.app/assets/pokemon/scyther/main.png"
+                className="gba-well w-full px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none"
+              />
+            </div>
           </form>
         )}
       </section>
@@ -392,8 +488,18 @@ export function InitiativeTable() {
                         )}
                       </button>
 
+                      <CharacterAvatar
+                        src={vitals.avatarUrl}
+                        name={entry.characterName}
+                        isPokemon={vitals.isPokemon}
+                        accentHex={isTurn ? '#F6C445' : '#38BDF8'}
+                        className={`w-10 h-10 border-2 border-[#090D12] rounded-xs shrink-0 ${
+                          entry.hasActed && !isTurn ? 'brightness-75 saturate-75' : ''
+                        }`}
+                      />
+
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                           {entry.visibility === 'hidden' && (
                             <Lock
                               className="w-3.5 h-3.5 text-[#C084FC] shrink-0"
@@ -407,6 +513,11 @@ export function InitiativeTable() {
                           >
                             {entry.characterName}
                           </span>
+                          {entry.hasActed && (
+                            <span className="px-1.5 py-0.5 bg-[#10161D] border border-[#090D12] font-mono text-[10px] font-bold text-slate-200">
+                              DONE
+                            </span>
+                          )}
                         </div>
                         <div className="text-xs text-slate-300 truncate mt-0.5">
                           <span>{entry.playerName}</span>
@@ -415,14 +526,30 @@ export function InitiativeTable() {
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => removeInitiativeEntry(entry.id)}
-                      aria-label={`Remove ${entry.characterName} from initiative`}
-                      className="gba-btn w-9 h-9 inline-flex items-center justify-center bg-[#131A22] text-slate-400 hover:text-[#F04848] cursor-pointer shrink-0"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {canControlInitiativeEntry(entry, obrState) && (
+                        <button
+                          type="button"
+                          onClick={() => toggleEntryDone(entry.id)}
+                          title={entry.hasActed ? 'Batalkan DONE' : 'Tandai DONE'}
+                          className={`gba-btn px-2 h-9 text-[10px] font-mono font-bold cursor-pointer ${
+                            entry.hasActed
+                              ? 'bg-[#267347] text-white'
+                              : 'bg-[#131A22] text-slate-300 hover:text-white'
+                          }`}
+                        >
+                          DONE
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => removeInitiativeEntry(entry.id)}
+                        aria-label={`Remove ${entry.characterName} from initiative`}
+                        className="gba-btn w-9 h-9 inline-flex items-center justify-center bg-[#131A22] text-slate-400 hover:text-[#F04848] cursor-pointer shrink-0"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#090D12]/80">
@@ -528,26 +655,57 @@ export function InitiativeTable() {
                         </button>
                       </td>
 
-                      {/* Combatant & Player */}
-                      <td className="py-2.5 px-2 align-middle min-w-[140px]">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          {entry.visibility === 'hidden' && (
-                            <Lock
-                              className="w-3.5 h-3.5 text-[#C084FC] shrink-0"
-                              aria-label="Hidden GM Roll"
-                            />
-                          )}
-                          <span
-                            className={`font-display text-sm font-bold truncate ${
-                              isTurn ? 'text-[#F6C445]' : 'text-white'
+                      {/* Combatant & Player with Portrait */}
+                      <td className="py-2.5 px-2 align-middle min-w-[160px]">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <CharacterAvatar
+                            src={vitals.avatarUrl}
+                            name={entry.characterName}
+                            isPokemon={vitals.isPokemon}
+                            accentHex={isTurn ? '#F6C445' : '#38BDF8'}
+                            className={`w-9 h-9 border-2 border-[#090D12] rounded-xs shrink-0 ${
+                              entry.hasActed && !isTurn ? 'brightness-75 saturate-75' : ''
                             }`}
-                          >
-                            {entry.characterName}
-                          </span>
-                        </div>
-                        <div className="text-xs text-slate-300 truncate mt-0.5">
-                          <span>{entry.playerName}</span>
-                          <span className="text-slate-400"> · {entry.breakdown}</span>
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                              {entry.visibility === 'hidden' && (
+                                <Lock
+                                  className="w-3.5 h-3.5 text-[#C084FC] shrink-0"
+                                  aria-label="Hidden GM Roll"
+                                />
+                              )}
+                              <span
+                                className={`font-display text-sm font-bold truncate ${
+                                  isTurn ? 'text-[#F6C445]' : 'text-white'
+                                }`}
+                              >
+                                {entry.characterName}
+                              </span>
+                              {canControlInitiativeEntry(entry, obrState) ? (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleEntryDone(entry.id)}
+                                  title={entry.hasActed ? 'Batalkan DONE' : 'Tandai DONE'}
+                                  className={`px-1.5 py-0.5 font-mono text-[10px] font-bold border border-[#090D12] cursor-pointer ${
+                                    entry.hasActed
+                                      ? 'bg-[#267347] text-white'
+                                      : 'bg-[#11171E] text-slate-400 hover:text-white'
+                                  }`}
+                                >
+                                  DONE
+                                </button>
+                              ) : entry.hasActed ? (
+                                <span className="px-1.5 py-0.5 bg-[#10161D] border border-[#090D12] font-mono text-[10px] font-bold text-slate-200">
+                                  DONE
+                                </span>
+                              ) : null}
+                            </div>
+                            <div className="text-xs text-slate-300 truncate mt-0.5">
+                              <span>{entry.playerName}</span>
+                              <span className="text-slate-400"> · {entry.breakdown}</span>
+                            </div>
+                          </div>
                         </div>
                       </td>
 

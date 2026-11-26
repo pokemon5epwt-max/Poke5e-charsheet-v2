@@ -20,10 +20,37 @@ import {
   createEmptySaves,
   createEmptySkills,
   createId,
+  getPoke5eSpeciesArtworkUrl,
   mapPoke5eItemTypeToCategory,
   normalizeTrainerItems,
   syncPokeballsFromItems,
 } from './pokemon5eRules';
+
+const POKE5E_ASSETS_ORIGIN = 'https://poke5e.app';
+const POKE5E_USER_ASSETS_BASE = 'https://poke5e.auroratide.cloud';
+
+function resolvePoke5eUserAssetUrl(filename: unknown): string | undefined {
+  if (typeof filename !== 'string') return undefined;
+  const trimmed = filename.trim();
+  if (!trimmed) return undefined;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `${POKE5E_USER_ASSETS_BASE}/${trimmed.replace(/^\/+/, '')}`;
+}
+
+function resolvePoke5eSpeciesMediaUrl(
+  spRef: Poke5eSpeciesRef | undefined,
+  speciesFallback: string,
+  isShiny = false
+): string | undefined {
+  const rel = isShiny
+    ? spRef?.media?.mainShiny || spRef?.media?.main
+    : spRef?.media?.main;
+  if (rel && rel.trim()) {
+    if (/^https?:\/\//i.test(rel)) return rel.trim();
+    return `${POKE5E_ASSETS_ORIGIN}${rel.startsWith('/') ? rel : `/${rel}`}`;
+  }
+  return getPoke5eSpeciesArtworkUrl(spRef?.id || speciesFallback, isShiny);
+}
 
 /**
  * Public Supabase configuration embedded in the open-source poke5e.app client
@@ -62,6 +89,12 @@ interface Poke5eSpeciesRef {
   name: string;
   sr?: number | string;
   type?: string[];
+  media?: {
+    main?: string;
+    sprite?: string;
+    mainShiny?: string;
+    spriteShiny?: string;
+  };
 }
 
 export interface Poke5eItemRef {
@@ -406,6 +439,22 @@ function parsePokemon(raw: Record<string, unknown>): PokemonSheet {
     heldItem: String(raw.heldItem || raw.item || ''),
     statusCondition: String(raw.statusCondition || 'Healthy'),
     notes: String(raw.notes || ''),
+    ...(typeof raw.avatarUrl === 'string' && raw.avatarUrl.trim()
+      ? { avatarUrl: raw.avatarUrl.trim() }
+      : resolvePoke5eUserAssetUrl(raw.avatarFilename ?? raw.avatar_filename)
+        ? { avatarUrl: resolvePoke5eUserAssetUrl(raw.avatarFilename ?? raw.avatar_filename) }
+        : getPoke5eSpeciesArtworkUrl(
+              String(raw.species || raw.pokemon || raw.name || ''),
+              Boolean(raw.isShiny ?? raw.is_shiny ?? raw.shiny)
+            )
+          ? {
+              avatarUrl: getPoke5eSpeciesArtworkUrl(
+                String(raw.species || raw.pokemon || raw.name || ''),
+                Boolean(raw.isShiny ?? raw.is_shiny ?? raw.shiny)
+              ),
+            }
+          : {}),
+    ...(raw.isShiny || raw.is_shiny || raw.shiny ? { isShiny: true } : {}),
   };
 }
 
@@ -522,6 +571,7 @@ interface SupabaseTrainerRow {
   save_int?: boolean;
   save_wis?: boolean;
   save_cha?: boolean;
+  avatar_filename?: string | null;
   [key: string]: unknown;
 }
 
@@ -553,6 +603,9 @@ interface SupabasePokemonRow {
   speed_walking?: number | null;
   stab_base?: string | null;
   stab_bonus?: number | null;
+  avatar_filename?: string | null;
+  is_shiny?: boolean | null;
+  shiny?: boolean | null;
   save_str?: boolean;
   save_dex?: boolean;
   save_con?: boolean;
@@ -942,6 +995,9 @@ export async function importFromPoke5eLink(
       badges: 0,
       trainerPaths: trainerRow.path_name || '',
       notes: trainerRow.description || '',
+      ...(resolvePoke5eUserAssetUrl(trainerRow.avatar_filename)
+        ? { avatarUrl: resolvePoke5eUserAssetUrl(trainerRow.avatar_filename) }
+        : {}),
       poke5eMeta: {
         trainerId: trainerRow.id,
         readKey: effectiveReadKey,
@@ -1013,6 +1069,15 @@ export async function importFromPoke5eLink(
           ? row.stab_bonus
           : undefined;
 
+      const isShiny = Boolean(row.is_shiny ?? row.shiny);
+      const customAvatarUrl = resolvePoke5eUserAssetUrl(row.avatar_filename);
+      const speciesArtworkUrl = resolvePoke5eSpeciesMediaUrl(
+        spRef,
+        row.species || '',
+        isShiny
+      );
+      const resolvedAvatarUrl = customAvatarUrl || speciesArtworkUrl;
+
       return {
         id: `poke5e-${row.id}`,
         kind: 'pokemon',
@@ -1048,6 +1113,8 @@ export async function importFromPoke5eLink(
         heldItem: row.held_item || heldByPokemon.get(row.id) || '',
         statusCondition: row.status || 'Healthy',
         notes: row.notes || '',
+        ...(resolvedAvatarUrl ? { avatarUrl: resolvedAvatarUrl } : {}),
+        ...(isShiny ? { isShiny: true } : {}),
       };
     });
 
@@ -1170,6 +1237,11 @@ export function normalizeJsonToWorkspace(rawJson: unknown): PartyWorkspace | nul
       badges: Number(t.badges ?? 0),
       trainerPaths: String(t.trainerPaths || ''),
       notes: String(t.notes || ''),
+      ...(typeof t.avatarUrl === 'string' && t.avatarUrl.trim()
+        ? { avatarUrl: t.avatarUrl.trim() }
+        : resolvePoke5eUserAssetUrl(t.avatarFilename ?? t.avatar_filename)
+          ? { avatarUrl: resolvePoke5eUserAssetUrl(t.avatarFilename ?? t.avatar_filename) }
+          : {}),
       poke5eMeta:
         t.poke5eMeta && typeof t.poke5eMeta === 'object'
           ? (t.poke5eMeta as TrainerSheet['poke5eMeta'])
@@ -1263,6 +1335,17 @@ export function normalizeJsonToWorkspace(rawJson: unknown): PartyWorkspace | nul
       ? trainerCandidate.specializations.join(', ')
       : String(trainerCandidate.trainerPaths || ''),
     notes: String(trainerCandidate.biography || trainerCandidate.notes || ''),
+    ...(typeof trainerCandidate.avatarUrl === 'string' && trainerCandidate.avatarUrl.trim()
+      ? { avatarUrl: trainerCandidate.avatarUrl.trim() }
+      : resolvePoke5eUserAssetUrl(
+            trainerCandidate.avatarFilename ?? trainerCandidate.avatar_filename
+          )
+        ? {
+            avatarUrl: resolvePoke5eUserAssetUrl(
+              trainerCandidate.avatarFilename ?? trainerCandidate.avatar_filename
+            ),
+          }
+        : {}),
     poke5eMeta:
       trainerCandidate.id || trainerCandidate.readKey
         ? {
@@ -1587,5 +1670,8 @@ export function parseQuickTextPokemon(text: string): PokemonSheet {
     heldItem: '',
     statusCondition: 'Healthy',
     notes: 'Imported via quick statblock parser.',
+    ...(getPoke5eSpeciesArtworkUrl(nameLine.slice(0, 32))
+      ? { avatarUrl: getPoke5eSpeciesArtworkUrl(nameLine.slice(0, 32)) }
+      : {}),
   };
 }

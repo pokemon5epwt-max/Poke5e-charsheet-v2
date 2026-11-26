@@ -33,6 +33,8 @@ import {
   createId,
   createStarterParty,
   normalizeTrainerItems,
+  parseHpText,
+  resolveCharacterAvatarUrl,
   syncPokeballsFromItems,
 } from '../utils/pokemon5eRules';
 import {
@@ -67,6 +69,69 @@ function getNextTurnIndexAfterReorder(
   return Math.max(0, Math.min(prevIndex, nextList.length - 1));
 }
 
+export function canControlInitiativeEntry(
+  entry: InitiativeEntry | undefined,
+  obrState: ObrState
+): boolean {
+  if (!entry) return false;
+  if (obrState.role === 'GM') return true;
+  if (!entry.ownerId || entry.ownerId === 'local-player') return true;
+  return entry.ownerId === obrState.playerId;
+}
+
+function patchInitiativeFromParty(
+  state: {
+    party: PartyWorkspace;
+    obrState: ObrState;
+    initiativeList: InitiativeEntry[];
+  },
+  now: string
+): { entries: InitiativeEntry[]; changed: boolean } {
+  let changed = false;
+  const localId = state.obrState.playerId || 'local-player';
+  const nextEntries = state.initiativeList.map((entry) => {
+    if (entry.isNpc) return entry;
+    const isLocalOwner =
+      entry.ownerId === localId ||
+      entry.ownerId === 'local-player' ||
+      !entry.ownerId;
+    if (!isLocalOwner) return entry;
+
+    const matched =
+      entry.characterId === 'trainer'
+        ? state.party.trainer
+        : state.party.pokemon.find((p) => p.id === entry.characterId);
+    if (!matched) return entry;
+
+    const nextHpText = `${matched.hpCurrent}/${matched.hpMax}`;
+    const nextAvatar = resolveCharacterAvatarUrl(matched);
+    if (
+      entry.characterName === matched.name &&
+      entry.hpCurrent === matched.hpCurrent &&
+      entry.hpMax === matched.hpMax &&
+      entry.hpText === nextHpText &&
+      entry.ac === matched.ac &&
+      entry.avatarUrl === nextAvatar
+    ) {
+      return entry;
+    }
+
+    changed = true;
+    return {
+      ...entry,
+      characterName: matched.name,
+      hpCurrent: matched.hpCurrent,
+      hpMax: matched.hpMax,
+      hpText: nextHpText,
+      ac: matched.ac,
+      avatarUrl: nextAvatar,
+      updatedAt: now,
+    };
+  });
+
+  return { entries: nextEntries, changed };
+}
+
 function upsertInitiativeFromRoll(
   state: {
     party: PartyWorkspace;
@@ -85,21 +150,32 @@ function upsertInitiativeFromRoll(
         ? roll.total - roll.selectedDie
         : 0;
 
+  const existing = state.initiativeList.find((e) => e.id === entryId);
+
   let hpText: string | undefined;
+  let hpCurrent: number | undefined;
+  let hpMax: number | undefined;
   let ac: number | undefined;
+  let avatarUrl: string | undefined;
+
   if (roll.source === 'local') {
     const matched =
       roll.characterId === 'trainer'
         ? state.party.trainer
         : state.party.pokemon.find((p) => p.id === roll.characterId);
     if (matched) {
+      hpCurrent = matched.hpCurrent;
+      hpMax = matched.hpMax;
       hpText = `${matched.hpCurrent}/${matched.hpMax}`;
       ac = matched.ac;
+      avatarUrl = resolveCharacterAvatarUrl(matched);
     }
   } else {
-    const existing = state.initiativeList.find((e) => e.id === entryId);
     hpText = existing?.hpText;
+    hpCurrent = existing?.hpCurrent;
+    hpMax = existing?.hpMax;
     ac = existing?.ac;
+    avatarUrl = existing?.avatarUrl;
   }
 
   const nextEntry: InitiativeEntry = {
@@ -113,7 +189,11 @@ function upsertInitiativeFromRoll(
     breakdown: roll.breakdown,
     visibility: roll.visibility,
     hpText,
+    hpCurrent,
+    hpMax,
     ac,
+    avatarUrl,
+    hasActed: existing?.hasActed ?? false,
     isNpc: false,
     updatedAt: roll.timestamp,
   };
@@ -157,6 +237,12 @@ function isRemoteInitiativeEquivalent(
       a.id !== b.id ||
       a.initiative !== b.initiative ||
       a.characterName !== b.characterName ||
+      Boolean(a.hasActed) !== Boolean(b.hasActed) ||
+      a.avatarUrl !== b.avatarUrl ||
+      a.hpText !== b.hpText ||
+      a.hpCurrent !== b.hpCurrent ||
+      a.hpMax !== b.hpMax ||
+      a.ac !== b.ac ||
       a.updatedAt !== b.updatedAt
     ) {
       return false;
@@ -286,10 +372,13 @@ interface CharacterStoreState {
     dexMod?: number;
     ac?: number;
     hpText?: string;
+    avatarUrl?: string;
   }) => void;
   updateInitiativeScore: (id: string, initiative: number) => void;
   removeInitiativeEntry: (id: string) => void;
   setInitiativeTurnIndex: (index: number) => void;
+  endCurrentTurn: () => void;
+  toggleEntryDone: (id: string) => void;
   nextInitiativeTurn: () => void;
   prevInitiativeTurn: () => void;
   setInitiativeRound: (round: number) => void;
@@ -330,9 +419,11 @@ export const useCharacterStore = create<CharacterStoreState>()(
       setDiceIntegrationMode: (diceIntegrationMode) => set({ diceIntegrationMode }),
       setObrState: (obrState) => set({ obrState }),
 
-      updateTrainer: (patch) =>
-        set((state) => ({
-          party: {
+      updateTrainer: (patch) => {
+        const now = new Date().toISOString();
+        let didInitChange = false;
+        set((state) => {
+          const nextParty: PartyWorkspace = {
             ...state.party,
             trainer: {
               ...state.party.trainer,
@@ -340,8 +431,29 @@ export const useCharacterStore = create<CharacterStoreState>()(
               id: 'trainer',
               kind: 'trainer',
             },
-          },
-        })),
+          };
+          const synced = patchInitiativeFromParty(
+            { party: nextParty, obrState: state.obrState, initiativeList: state.initiativeList },
+            now
+          );
+          didInitChange = synced.changed;
+          return {
+            party: nextParty,
+            ...(synced.changed
+              ? { initiativeList: synced.entries, initiativeUpdatedAt: now }
+              : {}),
+          };
+        });
+        if (didInitChange) {
+          const current = get();
+          void syncInitiativeToObr({
+            entries: current.initiativeList,
+            turnIndex: current.initiativeTurnIndex,
+            round: current.initiativeRound,
+            updatedAt: current.initiativeUpdatedAt || now,
+          });
+        }
+      },
 
       resetTrainerToBlank: () =>
         set((state) => ({
@@ -954,15 +1066,38 @@ export const useCharacterStore = create<CharacterStoreState>()(
         return true;
       },
 
-      updatePokemon: (id, patch) =>
-        set((state) => ({
-          party: {
+      updatePokemon: (id, patch) => {
+        const now = new Date().toISOString();
+        let didInitChange = false;
+        set((state) => {
+          const nextParty: PartyWorkspace = {
             ...state.party,
             pokemon: state.party.pokemon.map((p) =>
               p.id === id ? { ...p, ...patch, id, kind: 'pokemon' } : p
             ),
-          },
-        })),
+          };
+          const synced = patchInitiativeFromParty(
+            { party: nextParty, obrState: state.obrState, initiativeList: state.initiativeList },
+            now
+          );
+          didInitChange = synced.changed;
+          return {
+            party: nextParty,
+            ...(synced.changed
+              ? { initiativeList: synced.entries, initiativeUpdatedAt: now }
+              : {}),
+          };
+        });
+        if (didInitChange) {
+          const current = get();
+          void syncInitiativeToObr({
+            entries: current.initiativeList,
+            turnIndex: current.initiativeTurnIndex,
+            round: current.initiativeRound,
+            updatedAt: current.initiativeUpdatedAt || now,
+          });
+        }
+      },
 
       removePokemon: (id) =>
         set((state) => {
@@ -978,32 +1113,56 @@ export const useCharacterStore = create<CharacterStoreState>()(
           };
         }),
 
-      adjustHp: (characterId, delta) =>
+      adjustHp: (characterId, delta) => {
+        const now = new Date().toISOString();
+        let didInitChange = false;
         set((state) => {
-          if (characterId === 'trainer') {
-            const t = state.party.trainer;
-            const nextHp = Math.max(0, Math.min(t.hpMax, t.hpCurrent + delta));
-            return {
-              party: {
-                ...state.party,
-                trainer: { ...t, hpCurrent: nextHp },
-              },
-            };
-          }
+          const nextParty: PartyWorkspace =
+            characterId === 'trainer'
+              ? {
+                  ...state.party,
+                  trainer: {
+                    ...state.party.trainer,
+                    hpCurrent: Math.max(
+                      0,
+                      Math.min(state.party.trainer.hpMax, state.party.trainer.hpCurrent + delta)
+                    ),
+                  },
+                }
+              : {
+                  ...state.party,
+                  pokemon: state.party.pokemon.map((p) =>
+                    p.id === characterId
+                      ? {
+                          ...p,
+                          hpCurrent: Math.max(0, Math.min(p.hpMax, p.hpCurrent + delta)),
+                        }
+                      : p
+                  ),
+                };
+
+          const synced = patchInitiativeFromParty(
+            { party: nextParty, obrState: state.obrState, initiativeList: state.initiativeList },
+            now
+          );
+          didInitChange = synced.changed;
           return {
-            party: {
-              ...state.party,
-              pokemon: state.party.pokemon.map((p) =>
-                p.id === characterId
-                  ? {
-                      ...p,
-                      hpCurrent: Math.max(0, Math.min(p.hpMax, p.hpCurrent + delta)),
-                    }
-                  : p
-              ),
-            },
+            party: nextParty,
+            ...(synced.changed
+              ? { initiativeList: synced.entries, initiativeUpdatedAt: now }
+              : {}),
           };
-        }),
+        });
+        if (didInitChange) {
+          const current = get();
+          void syncInitiativeToObr({
+            entries: current.initiativeList,
+            turnIndex: current.initiativeTurnIndex,
+            round: current.initiativeRound,
+            updatedAt: current.initiativeUpdatedAt || now,
+          });
+        }
+      },
 
       addMove: (pokemonId, move) =>
         set((state) => ({
@@ -1068,9 +1227,11 @@ export const useCharacterStore = create<CharacterStoreState>()(
           },
         })),
 
-      longRestParty: () =>
-        set((state) => ({
-          party: {
+      longRestParty: () => {
+        const now = new Date().toISOString();
+        let didInitChange = false;
+        set((state) => {
+          const nextParty: PartyWorkspace = {
             trainer: {
               ...state.party.trainer,
               hpCurrent: state.party.trainer.hpMax,
@@ -1083,15 +1244,47 @@ export const useCharacterStore = create<CharacterStoreState>()(
               statusCondition: 'Healthy',
               moves: p.moves.map((m) => ({ ...m, ppCurrent: m.ppMax })),
             })),
-          },
-        })),
+          };
+          const synced = patchInitiativeFromParty(
+            { party: nextParty, obrState: state.obrState, initiativeList: state.initiativeList },
+            now
+          );
+          didInitChange = synced.changed;
+          return {
+            party: nextParty,
+            ...(synced.changed
+              ? { initiativeList: synced.entries, initiativeUpdatedAt: now }
+              : {}),
+          };
+        });
+        if (didInitChange) {
+          const current = get();
+          void syncInitiativeToObr({
+            entries: current.initiativeList,
+            turnIndex: current.initiativeTurnIndex,
+            round: current.initiativeRound,
+            updatedAt: current.initiativeUpdatedAt || now,
+          });
+        }
+      },
 
-      replaceParty: (workspace, source = 'json') =>
+      replaceParty: (workspace, source = 'json') => {
+        const now = new Date().toISOString();
+        let didInitChange = false;
         set((state) => {
           const cleanWorkspace: PartyWorkspace = {
             trainer: { ...workspace.trainer, id: 'trainer', kind: 'trainer' },
             pokemon: workspace.pokemon.slice(0, 6),
           };
+          const synced = patchInitiativeFromParty(
+            {
+              party: cleanWorkspace,
+              obrState: state.obrState,
+              initiativeList: state.initiativeList,
+            },
+            now
+          );
+          didInitChange = synced.changed;
           return {
             party: cleanWorkspace,
             activeCharacterId: 'trainer',
@@ -1100,16 +1293,32 @@ export const useCharacterStore = create<CharacterStoreState>()(
               cleanWorkspace,
               source
             ),
+            ...(synced.changed
+              ? { initiativeList: synced.entries, initiativeUpdatedAt: now }
+              : {}),
           };
-        }),
+        });
+        if (didInitChange) {
+          const current = get();
+          void syncInitiativeToObr({
+            entries: current.initiativeList,
+            turnIndex: current.initiativeTurnIndex,
+            round: current.initiativeRound,
+            updatedAt: current.initiativeUpdatedAt || now,
+          });
+        }
+      },
 
-      updatePartyFromImport: (workspace, source = 'link') =>
+      updatePartyFromImport: (workspace, source = 'link') => {
+        const now = new Date().toISOString();
+        let didInitChange = false;
         set((state) => {
           const prevTrainer = state.party.trainer;
           const nextTrainer: TrainerSheet = {
             ...workspace.trainer,
             id: 'trainer',
             kind: 'trainer',
+            avatarUrl: workspace.trainer.avatarUrl || prevTrainer.avatarUrl,
             badges:
               workspace.trainer.badges > 0
                 ? workspace.trainer.badges
@@ -1151,6 +1360,8 @@ export const useCharacterStore = create<CharacterStoreState>()(
               if (!existing) return incoming;
               return {
                 ...incoming,
+                avatarUrl: incoming.avatarUrl || existing.avatarUrl,
+                isShiny: incoming.isShiny ?? existing.isShiny,
                 tempHp: incoming.tempHp > 0 ? incoming.tempHp : existing.tempHp,
                 stabBase: incoming.stabBase ?? existing.stabBase,
                 stabBonus: incoming.stabBonus ?? existing.stabBonus,
@@ -1170,6 +1381,16 @@ export const useCharacterStore = create<CharacterStoreState>()(
             pokemon: nextPokemon,
           };
 
+          const synced = patchInitiativeFromParty(
+            {
+              party: mergedWorkspace,
+              obrState: state.obrState,
+              initiativeList: state.initiativeList,
+            },
+            now
+          );
+          didInitChange = synced.changed;
+
           return {
             party: mergedWorkspace,
             activeCharacterId: stillHasActive ? state.activeCharacterId : 'trainer',
@@ -1178,8 +1399,21 @@ export const useCharacterStore = create<CharacterStoreState>()(
               mergedWorkspace,
               source
             ),
+            ...(synced.changed
+              ? { initiativeList: synced.entries, initiativeUpdatedAt: now }
+              : {}),
           };
-        }),
+        });
+        if (didInitChange) {
+          const current = get();
+          void syncInitiativeToObr({
+            entries: current.initiativeList,
+            turnIndex: current.initiativeTurnIndex,
+            round: current.initiativeRound,
+            updatedAt: current.initiativeUpdatedAt || now,
+          });
+        }
+      },
 
       loadSavedTrainer: (profileId) =>
         set((state) => {
@@ -1324,10 +1558,11 @@ export const useCharacterStore = create<CharacterStoreState>()(
           rollLogClearedAt: new Date().toISOString(),
         }),
 
-      addManualInitiative: ({ name, initiative, dexMod = 0, ac, hpText }) => {
+      addManualInitiative: ({ name, initiative, dexMod = 0, ac, hpText, avatarUrl }) => {
         const trimmed = name.trim();
         if (!trimmed) return;
         const now = new Date().toISOString();
+        const parsedHp = parseHpText(hpText);
         set((state) => {
           const id = createId('npc-init');
           const entry: InitiativeEntry = {
@@ -1342,6 +1577,10 @@ export const useCharacterStore = create<CharacterStoreState>()(
             visibility: 'visible',
             ac,
             hpText: hpText?.trim() || undefined,
+            hpCurrent: parsedHp.hpCurrent,
+            hpMax: parsedHp.hpMax,
+            avatarUrl: avatarUrl?.trim() || undefined,
+            hasActed: false,
             isNpc: true,
             updatedAt: now,
           };
@@ -1438,6 +1677,95 @@ export const useCharacterStore = create<CharacterStoreState>()(
         });
       },
 
+      endCurrentTurn: () => {
+        const stateBefore = get();
+        const count = stateBefore.initiativeList.length;
+        if (count === 0) return;
+
+        const currentIndex = Math.max(
+          0,
+          Math.min(stateBefore.initiativeTurnIndex, count - 1)
+        );
+        const activeEntry = stateBefore.initiativeList[currentIndex];
+        if (!canControlInitiativeEntry(activeEntry, stateBefore.obrState)) {
+          return;
+        }
+
+        const now = new Date().toISOString();
+        set((state) => {
+          const len = state.initiativeList.length;
+          if (len === 0) return state;
+          const idx = Math.max(0, Math.min(state.initiativeTurnIndex, len - 1));
+          const updated = state.initiativeList.map((entry, i) =>
+            i === idx ? { ...entry, hasActed: true, updatedAt: now } : entry
+          );
+
+          // Find next combatant that has NOT acted yet this round
+          let nextUnactedIndex = -1;
+          for (let offset = 1; offset < len; offset += 1) {
+            const candidate = (idx + offset) % len;
+            if (!updated[candidate].hasActed) {
+              nextUnactedIndex = candidate;
+              break;
+            }
+          }
+
+          if (nextUnactedIndex >= 0) {
+            return {
+              initiativeList: updated,
+              initiativeTurnIndex: nextUnactedIndex,
+              initiativeUpdatedAt: now,
+            };
+          }
+
+          // All combatants have acted -> advance to next round & clear DONE flags
+          return {
+            initiativeList: updated.map((entry) => ({
+              ...entry,
+              hasActed: false,
+              updatedAt: now,
+            })),
+            initiativeTurnIndex: 0,
+            initiativeRound: state.initiativeRound + 1,
+            initiativeUpdatedAt: now,
+          };
+        });
+
+        const current = get();
+        if (current.initiativeList.length > 0) {
+          void syncInitiativeToObr({
+            entries: current.initiativeList,
+            turnIndex: current.initiativeTurnIndex,
+            round: current.initiativeRound,
+            updatedAt: current.initiativeUpdatedAt || now,
+          });
+        }
+      },
+
+      toggleEntryDone: (id) => {
+        const stateBefore = get();
+        const target = stateBefore.initiativeList.find((e) => e.id === id);
+        if (!canControlInitiativeEntry(target, stateBefore.obrState)) {
+          return;
+        }
+        const now = new Date().toISOString();
+        set((state) => ({
+          initiativeList: state.initiativeList.map((entry) =>
+            entry.id === id
+              ? { ...entry, hasActed: !entry.hasActed, updatedAt: now }
+              : entry
+          ),
+          initiativeUpdatedAt: now,
+        }));
+        const current = get();
+        void syncInitiativeToObr({
+          entries: current.initiativeList,
+          turnIndex: current.initiativeTurnIndex,
+          round: current.initiativeRound,
+          updatedAt: current.initiativeUpdatedAt || now,
+        });
+      },
+
       nextInitiativeTurn: () => {
         const now = new Date().toISOString();
         set((state) => {
@@ -1445,6 +1773,11 @@ export const useCharacterStore = create<CharacterStoreState>()(
           if (count === 0) return state;
           if (state.initiativeTurnIndex + 1 >= count) {
             return {
+              initiativeList: state.initiativeList.map((entry) => ({
+                ...entry,
+                hasActed: false,
+                updatedAt: now,
+              })),
               initiativeTurnIndex: 0,
               initiativeRound: state.initiativeRound + 1,
               initiativeUpdatedAt: now,
@@ -1515,11 +1848,16 @@ export const useCharacterStore = create<CharacterStoreState>()(
 
       resetInitiativeRound: () => {
         const now = new Date().toISOString();
-        set({
+        set((state) => ({
+          initiativeList: state.initiativeList.map((entry) => ({
+            ...entry,
+            hasActed: false,
+            updatedAt: now,
+          })),
           initiativeRound: 1,
           initiativeTurnIndex: 0,
           initiativeUpdatedAt: now,
-        });
+        }));
         const current = get();
         void syncInitiativeToObr({
           entries: current.initiativeList,

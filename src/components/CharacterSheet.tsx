@@ -24,8 +24,10 @@ import {
   getSavingThrowModifier,
   getSkillModifier,
   getStabValue,
+  resolveCharacterAvatarUrl,
 } from '../utils/pokemon5eRules';
 import { AbilityGrid } from './AbilityGrid';
+import { CharacterAvatar } from './CharacterAvatar';
 import { MovesPanel } from './MovesPanel';
 import {
   LeagueBadgeIcon,
@@ -357,70 +359,81 @@ export function CharacterSheet({ onOpenImport }: CharacterSheetProps) {
         <div className="absolute -right-4 -bottom-6 pointer-events-none">
           <PokeballBackdrop colorHex={primaryTypeHex} />
         </div>
-        <div className="space-y-1.5 min-w-0 relative z-10">
-          {isEditing ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <input
-                type="text"
-                value={activeChar.name}
-                onChange={(e) =>
-                  isPokemon
-                    ? updatePokemon(activeChar.id, { name: e.target.value })
-                    : updateTrainer({ name: e.target.value })
-                }
-                className="gba-well font-display text-lg font-bold px-3 py-1.5 text-white w-full sm:w-auto"
-                aria-label="Character Name"
-              />
-              {isPokemon && (
+        <div className="flex items-start gap-3 sm:gap-3.5 min-w-0 relative z-10">
+          <CharacterAvatar
+            src={resolveCharacterAvatarUrl(activeChar)}
+            name={activeChar.name}
+            isPokemon={isPokemon}
+            isFainted={activeChar.hpCurrent <= 0}
+            accentHex={primaryTypeHex}
+            className="w-14 h-14 sm:w-16 sm:h-16 border-2 border-[#090D12] rounded-sm shrink-0 shadow-[inset_1px_1px_0_rgba(255,255,255,0.16)]"
+            fallbackTextClassName="text-base sm:text-lg"
+          />
+          <div className="space-y-1.5 min-w-0">
+            {isEditing ? (
+              <div className="flex flex-wrap items-center gap-2">
                 <input
                   type="text"
-                  value={activeChar.species}
+                  value={activeChar.name}
                   onChange={(e) =>
-                    updatePokemon(activeChar.id, { species: e.target.value })
+                    isPokemon
+                      ? updatePokemon(activeChar.id, { name: e.target.value })
+                      : updateTrainer({ name: e.target.value })
                   }
-                  placeholder="Species"
-                  className="gba-well text-sm px-3 py-1.5 text-slate-100 w-full sm:w-auto"
-                  aria-label="Pokémon Species"
+                  className="gba-well font-display text-lg font-bold px-3 py-1.5 text-white w-full sm:w-auto"
+                  aria-label="Character Name"
                 />
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-white drop-shadow-[1px_1px_0_#090D12]">
-                {activeChar.name}
-              </h1>
-              {isPokemon &&
-                activeChar.types.map((t) => {
-                  const st = TYPE_STYLES[t];
-                  return (
-                    <span
-                      key={t}
-                      className={`px-2 py-0.5 font-mono text-xs font-bold uppercase border-2 border-[#090D12] rounded-xs ${st.bg} ${st.text}`}
-                    >
-                      {t}
-                    </span>
-                  );
-                })}
-            </div>
-          )}
+                {isPokemon && (
+                  <input
+                    type="text"
+                    value={activeChar.species}
+                    onChange={(e) =>
+                      updatePokemon(activeChar.id, { species: e.target.value })
+                    }
+                    placeholder="Species"
+                    className="gba-well text-sm px-3 py-1.5 text-slate-100 w-full sm:w-auto"
+                    aria-label="Pokémon Species"
+                  />
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-white drop-shadow-[1px_1px_0_#090D12]">
+                  {activeChar.name}
+                </h1>
+                {isPokemon &&
+                  activeChar.types.map((t) => {
+                    const st = TYPE_STYLES[t];
+                    return (
+                      <span
+                        key={t}
+                        className={`px-2 py-0.5 font-mono text-xs font-bold uppercase border-2 border-[#090D12] rounded-xs ${st.bg} ${st.text}`}
+                      >
+                        {t}
+                      </span>
+                    );
+                  })}
+              </div>
+            )}
 
-          {isPokemon ? (
-            <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
-              {activeChar.species} · Lv.{activeChar.level} · SR {activeChar.sr} ·{' '}
-              {activeChar.nature} Nature · Ability: {activeChar.ability}
-              {activeChar.heldItem ? ` · Held: ${activeChar.heldItem}` : ''}
-            </p>
-          ) : (
-            <p className="text-xs sm:text-sm text-slate-200 flex flex-wrap items-center gap-x-1.5 gap-y-1 leading-relaxed">
-              <span>
-                {activeChar.trainerClass} · Lv.{activeChar.level}
-              </span>
-              {activeChar.origin && <span>· {activeChar.origin}</span>}
-              <span className="inline-flex items-center gap-1">
-                · <LeagueBadgeIcon className="w-3.5 h-3.5" /> {activeChar.badges} Badges
-              </span>
-            </p>
-          )}
+            {isPokemon ? (
+              <p className="text-xs sm:text-sm text-slate-200 leading-relaxed">
+                {activeChar.species} · Lv.{activeChar.level} · SR {activeChar.sr} ·{' '}
+                {activeChar.nature} Nature · Ability: {activeChar.ability}
+                {activeChar.heldItem ? ` · Held: ${activeChar.heldItem}` : ''}
+              </p>
+            ) : (
+              <p className="text-xs sm:text-sm text-slate-200 flex flex-wrap items-center gap-x-1.5 gap-y-1 leading-relaxed">
+                <span>
+                  {activeChar.trainerClass} · Lv.{activeChar.level}
+                </span>
+                {activeChar.origin && <span>· {activeChar.origin}</span>}
+                <span className="inline-flex items-center gap-1">
+                  · <LeagueBadgeIcon className="w-3.5 h-3.5" /> {activeChar.badges} Badges
+                </span>
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto shrink-0 relative z-10">
@@ -627,74 +640,146 @@ export function CharacterSheet({ onOpenImport }: CharacterSheetProps) {
                   />
                 </div>
               </div>
+
+              <div className="pt-2 border-t border-[#090D12] flex flex-col sm:flex-row sm:items-end gap-2.5">
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs text-slate-300 mb-1">
+                    Portrait / Avatar URL (opsional — otomatis pakai poke5e.app jika kosong)
+                  </label>
+                  <input
+                    type="url"
+                    value={activeChar.avatarUrl ?? ''}
+                    onChange={(e) =>
+                      updatePokemon(activeChar.id, {
+                        avatarUrl: e.target.value || undefined,
+                      })
+                    }
+                    placeholder="https://poke5e.app/assets/pokemon/pikachu/main.png"
+                    className="gba-well w-full px-2.5 py-1.5 text-xs text-white placeholder:text-slate-500"
+                  />
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <label className="gba-btn inline-flex items-center gap-1.5 px-2.5 min-h-[32px] bg-[#131A22] text-xs text-slate-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(activeChar.isShiny)}
+                      onChange={(e) =>
+                        updatePokemon(activeChar.id, {
+                          isShiny: e.target.checked,
+                          avatarUrl: undefined,
+                        })
+                      }
+                      className="accent-[#F6C445]"
+                    />
+                    <span>Shiny</span>
+                  </label>
+                  {activeChar.avatarUrl && (
+                    <button
+                      type="button"
+                      onClick={() => updatePokemon(activeChar.id, { avatarUrl: undefined })}
+                      className="gba-btn px-2.5 min-h-[32px] text-xs text-slate-300 hover:text-white bg-[#131A22] hover:bg-[#232F3E] cursor-pointer"
+                    >
+                      Auto
+                    </button>
+                  )}
+                </div>
+              </div>
             </>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              <div>
-                <label className="block text-xs text-slate-300 mb-1">Level</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={20}
-                  value={activeChar.level}
-                  onChange={(e) =>
-                    updateTrainer({
-                      level: Math.max(1, Math.min(20, parseInt(e.target.value || '1', 10))),
-                    })
-                  }
-                  className="gba-well w-full px-2.5 py-1.5 text-xs font-mono text-white"
-                />
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div>
+                  <label className="block text-xs text-slate-300 mb-1">Level</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={activeChar.level}
+                    onChange={(e) =>
+                      updateTrainer({
+                        level: Math.max(1, Math.min(20, parseInt(e.target.value || '1', 10))),
+                      })
+                    }
+                    className="gba-well w-full px-2.5 py-1.5 text-xs font-mono text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-300 mb-1">Class</label>
+                  <input
+                    type="text"
+                    value={activeChar.trainerClass}
+                    onChange={(e) => updateTrainer({ trainerClass: e.target.value })}
+                    className="gba-well w-full px-2.5 py-1.5 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-300 mb-1">Origin</label>
+                  <input
+                    type="text"
+                    value={activeChar.origin}
+                    onChange={(e) => updateTrainer({ origin: e.target.value })}
+                    className="gba-well w-full px-2.5 py-1.5 text-xs text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-300 mb-1">Badges</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={activeChar.badges}
+                    onChange={(e) =>
+                      updateTrainer({ badges: Math.max(0, parseInt(e.target.value || '0', 10)) })
+                    }
+                    className="gba-well w-full px-2.5 py-1.5 text-xs font-mono text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-300 mb-1">Money (¥)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={activeChar.money}
+                    onChange={(e) =>
+                      updateTrainer({ money: Math.max(0, parseInt(e.target.value || '0', 10)) })
+                    }
+                    className="gba-well w-full px-2.5 py-1.5 text-xs font-mono text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-300 mb-1">Paths / Specs</label>
+                  <input
+                    type="text"
+                    value={activeChar.trainerPaths}
+                    onChange={(e) => updateTrainer({ trainerPaths: e.target.value })}
+                    className="gba-well w-full px-2.5 py-1.5 text-xs text-white"
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs text-slate-300 mb-1">Class</label>
-                <input
-                  type="text"
-                  value={activeChar.trainerClass}
-                  onChange={(e) => updateTrainer({ trainerClass: e.target.value })}
-                  className="gba-well w-full px-2.5 py-1.5 text-xs text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-300 mb-1">Origin</label>
-                <input
-                  type="text"
-                  value={activeChar.origin}
-                  onChange={(e) => updateTrainer({ origin: e.target.value })}
-                  className="gba-well w-full px-2.5 py-1.5 text-xs text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-300 mb-1">Badges</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={activeChar.badges}
-                  onChange={(e) =>
-                    updateTrainer({ badges: Math.max(0, parseInt(e.target.value || '0', 10)) })
-                  }
-                  className="gba-well w-full px-2.5 py-1.5 text-xs font-mono text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-300 mb-1">Money (¥)</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={activeChar.money}
-                  onChange={(e) =>
-                    updateTrainer({ money: Math.max(0, parseInt(e.target.value || '0', 10)) })
-                  }
-                  className="gba-well w-full px-2.5 py-1.5 text-xs font-mono text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-300 mb-1">Paths / Specs</label>
-                <input
-                  type="text"
-                  value={activeChar.trainerPaths}
-                  onChange={(e) => updateTrainer({ trainerPaths: e.target.value })}
-                  className="gba-well w-full px-2.5 py-1.5 text-xs text-white"
-                />
+
+              <div className="pt-2 border-t border-[#090D12] flex items-end gap-2">
+                <div className="flex-1 min-w-0">
+                  <label className="block text-xs text-slate-300 mb-1">
+                    Trainer Avatar URL (opsional — tampil di Initiative HUD)
+                  </label>
+                  <input
+                    type="url"
+                    value={activeChar.avatarUrl ?? ''}
+                    onChange={(e) =>
+                      updateTrainer({ avatarUrl: e.target.value || undefined })
+                    }
+                    placeholder="https://..."
+                    className="gba-well w-full px-2.5 py-1.5 text-xs text-white placeholder:text-slate-500"
+                  />
+                </div>
+                {activeChar.avatarUrl && (
+                  <button
+                    type="button"
+                    onClick={() => updateTrainer({ avatarUrl: undefined })}
+                    className="gba-btn px-2.5 min-h-[32px] text-xs text-slate-300 hover:text-white bg-[#131A22] hover:bg-[#232F3E] cursor-pointer shrink-0"
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
             </div>
           )}

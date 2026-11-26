@@ -7,6 +7,8 @@ import {
   Maximize2,
   Minimize2,
   MoreHorizontal,
+  Pin,
+  PinOff,
   RefreshCw,
   RotateCcw,
 } from 'lucide-react';
@@ -21,6 +23,8 @@ interface TopBarProps {
   onExportJson: () => void;
   onToggleMobileLog: () => void;
   unreadLogCount: number;
+  isFloatingHudOpen?: boolean;
+  onToggleFloatingHud?: () => void;
 }
 
 export function TopBar({
@@ -28,6 +32,8 @@ export function TopBar({
   onExportJson,
   onToggleMobileLog,
   unreadLogCount,
+  isFloatingHudOpen = false,
+  onToggleFloatingHud,
 }: TopBarProps) {
   const obrState = useCharacterStore((s) => s.obrState);
   const party = useCharacterStore((s) => s.party);
@@ -175,6 +181,30 @@ export function TopBar({
           <span>Sample</span>
         </button>
 
+        {obrState.isAvailable && onToggleFloatingHud && (
+          <button
+            type="button"
+            onClick={onToggleFloatingHud}
+            title={
+              isFloatingHudOpen
+                ? 'Tutup Floating Initiative HUD di map OBR'
+                : 'Buka Floating Initiative HUD di map OBR'
+            }
+            className={`gba-btn hidden md:inline-flex items-center gap-1.5 px-2.5 min-h-[36px] text-xs font-semibold whitespace-nowrap shrink-0 cursor-pointer ${
+              isFloatingHudOpen
+                ? 'bg-[#267347] text-white'
+                : 'bg-[#1E2833] hover:bg-[#2A3746] text-[#38BDF8]'
+            }`}
+          >
+            {isFloatingHudOpen ? (
+              <PinOff className="w-3.5 h-3.5" />
+            ) : (
+              <Pin className="w-3.5 h-3.5" />
+            )}
+            <span>HUD</span>
+          </button>
+        )}
+
         {obrState.isAvailable && (
           <button
             type="button"
@@ -240,6 +270,24 @@ export function TopBar({
                 <RotateCcw className="w-4 h-4 text-[#F6C445] shrink-0" />
                 <span>Load Sample Party</span>
               </button>
+
+              {obrState.isAvailable && onToggleFloatingHud && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onToggleFloatingHud();
+                    setShowMobileMenu(false);
+                  }}
+                  className="gba-btn w-full flex items-center gap-2.5 px-3 min-h-[44px] text-xs font-semibold text-slate-100 bg-[#141C24] hover:bg-[#24313F] cursor-pointer text-left"
+                >
+                  {isFloatingHudOpen ? (
+                    <PinOff className="w-4 h-4 text-[#38D46A] shrink-0" />
+                  ) : (
+                    <Pin className="w-4 h-4 text-[#38BDF8] shrink-0" />
+                  )}
+                  <span>{isFloatingHudOpen ? 'Tutup Floating HUD' : 'Floating Init HUD'}</span>
+                </button>
+              )}
 
               {obrState.isAvailable && (
                 <button
